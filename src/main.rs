@@ -115,7 +115,7 @@ impl FromStr for SolutionPart {
     }
 }
 
-/// Here's how it works
+/// Lucretiel's solutions for the Avent of Code, 2020.
 #[derive(Debug, StructOpt)]
 struct Args {
     /// Which day's solution are you looking for?
