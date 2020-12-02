@@ -8,8 +8,13 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.34"
+cascade = "1.0.0"
 gridly = "0.9.0"
 gridly_adapters = "0.1.0"
 gridly_grids = "0.4.0"
+joinery = "2.0.0"
+lazy_format = "1.8.3"
+nom = "6.0.1"
+ordered-float = "2.0.0"
 structopt = { version = "0.3", default-features = false }
 thiserror = "1.0.22"
