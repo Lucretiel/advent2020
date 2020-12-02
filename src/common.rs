@@ -16,3 +16,21 @@ pub fn parse_items_iter<'a, T: FromStr, C: FromIterator<T>>(
 pub fn parse_items<T: FromStr, C: FromIterator<T>>(input: &str) -> Result<C, T::Err> {
     parse_items_iter(input.split_whitespace())
 }
+
+pub trait BoolExt: Sized {
+    fn then<T, F: FnOnce() -> T>(self, func: F) -> Option<T>;
+
+    fn then_some<T>(self, value: T) -> Option<T> {
+        self.then(move || value)
+    }
+}
+
+impl BoolExt for bool {
+    fn then<T, F: FnOnce() -> T>(self, func: F) -> Option<T> {
+        if self {
+            Some(func())
+        } else {
+            None
+        }
+    }
+}
