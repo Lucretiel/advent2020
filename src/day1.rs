@@ -1,31 +1,32 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
-use std::fmt::Display;
 
-use crate::common::{parse_items, BoolExt};
+use crate::common::parse_items;
 
-pub fn part1(input: &str) -> anyhow::Result<impl Display> {
-    let values: Vec<i64> = parse_items(input)?;
-
-    values
-        .iter()
-        .find_map(|&value1| {
-            let &value2 = values.iter().find(|&value2| value1 + value2 == 2020)?;
-            Some(value1 * value2)
-        })
-        .context("The problem has no solution!")
+fn solve_recursive(values: &HashSet<i64>, target: i64, depth: u32) -> Option<i64> {
+    match depth {
+        0 => None,
+        1 => values.get(&target).copied(),
+        depth => values
+            .iter()
+            .filter(|&&value| value < target)
+            .find_map(|&value| {
+                solve_recursive(values, target - value, depth - 1).map(|solution| solution * value)
+            }),
+    }
 }
 
-pub fn part2(input: &str) -> anyhow::Result<impl Display> {
-    let values: Vec<i64> = parse_items(input)?;
+fn solve(input: &str, depth: u32) -> anyhow::Result<i64> {
+    let values: HashSet<i64> = parse_items(input)?;
 
-    values
-        .iter()
-        .find_map(|&value1| {
-            values.iter().find_map(|&value2| {
-                values.iter().find_map(|&value3| {
-                    (value1 + value2 + value3 == 2020).then(|| value1 * value2 * value3)
-                })
-            })
-        })
-        .context("The problem has no solution")
+    solve_recursive(&values, 2020, depth).context("The problem has no solution!")
+}
+
+pub fn part1(input: &str) -> anyhow::Result<i64> {
+    solve(input, 2)
+}
+
+pub fn part2(input: &str) -> anyhow::Result<i64> {
+    solve(input, 3)
 }
