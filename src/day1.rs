@@ -1,15 +1,10 @@
 use anyhow::Context;
-use std::{fmt::Display, num::ParseIntError};
+use std::fmt::Display;
 
-pub fn parse_values(input: &str) -> Result<Vec<i64>, ParseIntError> {
-    input
-        .split_whitespace()
-        .map(|value| value.parse())
-        .collect()
-}
+use crate::common::parse_items;
 
 pub fn part1(input: &str) -> anyhow::Result<impl Display> {
-    let values = parse_values(input)?;
+    let values: Vec<i64> = parse_items(input)?;
 
     values
         .iter()
@@ -21,7 +16,7 @@ pub fn part1(input: &str) -> anyhow::Result<impl Display> {
 }
 
 pub fn part2(input: &str) -> anyhow::Result<impl Display> {
-    let values: Vec<i64> = parse_values(input)?;
+    let values: Vec<i64> = parse_items(input)?;
 
     values
         .iter()

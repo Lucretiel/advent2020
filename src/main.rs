@@ -1,3 +1,4 @@
+mod common;
 mod day1;
 
 use std::{
