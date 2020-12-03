@@ -2,6 +2,7 @@
 
 mod common;
 mod day1;
+mod day2;
 
 use std::{
     fs,
@@ -84,6 +85,7 @@ solution_days! {
     day22
     day23
     day24
+    day25
 }
 
 #[derive(Debug, Clone, Error)]
@@ -91,7 +93,7 @@ pub enum SolutionPartError {
     #[error("Failed to parse day: {0}")]
     Parse(#[from] ParseIntError),
 
-    #[error("{0} is not an Adevent Puzzle Part; must be 1 or 2")]
+    #[error("{0} is not an Advent Puzzle Part; must be 1 or 2")]
     BadPart(u8),
 }
 #[allow(non_camel_case_types)]
@@ -170,6 +172,8 @@ fn main() -> anyhow::Result<()> {
 
         day1, part1;
         day1, part2;
+        day2, part1;
+        day2, part2;
     );
 
     Ok(())
