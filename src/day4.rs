@@ -1,8 +1,10 @@
+mod better_part2;
+
 use nom::{
     branch::alt,
     bytes::complete::is_not,
     bytes::complete::tag,
-    bytes::complete::take_while_m_n,
+    // bytes::complete::take_while_m_n,
     character::complete::char,
     character::complete::one_of,
     combinator::all_consuming,
@@ -10,10 +12,11 @@ use nom::{
     error::ParseError,
     multi::fold_many0,
     sequence::{pair, preceded, terminated},
-    IResult, Parser,
+    IResult,
+    Parser,
 };
 
-use crate::common::BoolExt;
+// use crate::common::BoolExt;
 
 fn passport_field<'a, E>(label: &'static str) -> impl Parser<&'a str, &'a str, E>
 where
@@ -47,6 +50,7 @@ fn parse_field<'a>(input: &'a str) -> IResult<&'a str, Field<'a>> {
     ))(input)
 }
 
+/*
 fn parse_color(input: &str) -> IResult<&str, &str> {
     preceded(
         char('#'),
@@ -67,6 +71,7 @@ fn parse_eye_color(input: &str) -> IResult<&str, &str> {
         tag("oth"),
     ))(input)
 }
+*/
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct PartialDocument<'a> {
@@ -80,6 +85,7 @@ struct PartialDocument<'a> {
     country_id: Option<&'a str>,
 }
 
+/*
 fn check_year(year: &str, min: u32, max: u32) -> Option<()> {
     let year: u32 = year.parse().ok()?;
     (min <= year && year <= max).then_some(())
@@ -101,6 +107,7 @@ fn check_height(height: &str) -> Option<()> {
         _ => None,
     }
 }
+*/
 
 impl PartialDocument<'_> {
     fn is_mostly_valid(&self) -> bool {
@@ -121,6 +128,7 @@ impl PartialDocument<'_> {
         }
     }
 
+    /*
     fn is_even_more_mostly_valid(&self) -> Option<()> {
         check_year(self.birth_year?, 1920, 2002)?;
         check_year(self.issue_year?, 2010, 2020)?;
@@ -135,6 +143,7 @@ impl PartialDocument<'_> {
 
         Some(())
     }
+    */
 }
 
 fn parse_document<'a>(input: &'a str) -> IResult<&'a str, PartialDocument<'a>> {
@@ -175,6 +184,7 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
     Ok(count)
 }
 
+/*
 pub fn part2(input: &str) -> anyhow::Result<usize> {
     let count = input
         .split("\n\n")
@@ -189,3 +199,6 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
 
     Ok(count)
 }
+*/
+
+pub use better_part2::part2;
