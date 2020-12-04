@@ -1,16 +1,21 @@
-use std::convert::{Infallible, TryInto};
+use std::convert::TryInto;
 
 use nom::{
     character::complete::multispace1,
     character::complete::space0,
     character::complete::{alpha1, anychar, char, digit1, space1},
-    combinator::{iterator, map_res},
+    combinator::iterator,
+    error::Error,
     sequence::{pair, separated_pair, terminated},
     IResult, Parser,
 };
 
+use anyhow::Context;
+
+use crate::common::{parse_from_str, BoolExt};
+
 fn parse_number(input: &str) -> IResult<&str, usize> {
-    map_res(digit1, |value: &str| value.parse()).parse(input)
+    parse_from_str(digit1).parse(input)
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -90,15 +95,38 @@ fn parse_entry(input: &str) -> IResult<&str, Entry> {
         .parse(input)
 }
 
-// FOLLOW UP NOTES FOR THURSDAY: the problem with this solution is that errors
-// can occur, which we don't check for. Before doing day 3 we're going to correct that
-
-pub fn part1(input: &str) -> Result<usize, Infallible> {
+pub fn part1(input: &str) -> anyhow::Result<usize> {
     let mut entries = iterator(input, terminated(parse_entry, multispace1));
-    Ok(entries.filter(|entry| entry.is_valid()).count())
+    let solution = entries.filter(|entry| entry.is_valid()).count();
+    let (tail, ()) = entries
+        .finish()
+        .map_err(|err| {
+            err.map(|inner| Error {
+                input: (),
+                code: inner.code,
+            })
+        })
+        .context("Error parsing input")?;
+
+    tail.is_empty()
+        .then(|| solution)
+        .context("Didn't parse all of the input")
 }
 
-pub fn part2(input: &str) -> Result<usize, Infallible> {
+pub fn part2(input: &str) -> anyhow::Result<usize> {
     let mut entries = iterator(input, terminated(parse_entry, multispace1));
-    Ok(entries.filter(|entry| entry.is_valid_v2()).count())
+    let solution = entries.filter(|entry| entry.is_valid_v2()).count();
+    let (tail, ()) = entries
+        .finish()
+        .map_err(|err| {
+            err.map(|inner| Error {
+                input: (),
+                code: inner.code,
+            })
+        })
+        .context("Error parsing input")?;
+
+    tail.is_empty()
+        .then(|| solution)
+        .context("Didn't parse all of the input")
 }
