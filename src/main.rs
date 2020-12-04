@@ -4,6 +4,7 @@ mod common;
 mod day1;
 mod day2;
 mod day3;
+mod day4;
 
 use std::{
     fs,
@@ -177,6 +178,8 @@ fn main() -> anyhow::Result<()> {
         day2, part2;
         day3, part1;
         day3, part2;
+        day4, part1;
+        day4, part2;
     );
 
     Ok(())
