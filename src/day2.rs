@@ -50,13 +50,10 @@ impl Policy {
     }
 
     fn check_version_2(&self, password: &str) -> bool {
-        let c1 = char_at(password, self.range.min - 1);
-        let c2 = char_at(password, self.range.max - 1);
+        let c1 = char_at(password, self.range.min - 1) == Some(self.character);
+        let c2 = char_at(password, self.range.max - 1) == Some(self.character);
 
-        match (c1, c2) {
-            (Some(c1), Some(c2)) if (c1 == self.character) ^ (c2 == self.character) => true,
-            _ => false,
-        }
+        c1 ^ c2
     }
 }
 
@@ -92,6 +89,9 @@ fn parse_entry(input: &str) -> IResult<&str, Entry> {
         .map(|(policy, password)| Entry { policy, password })
         .parse(input)
 }
+
+// FOLLOW UP NOTES FOR THURSDAY: the problem with this solution is that errors
+// can occur, which we don't check for. Before doing day 3 we're going to correct that
 
 pub fn part1(input: &str) -> Result<usize, Infallible> {
     let mut entries = iterator(input, terminated(parse_entry, multispace1));
