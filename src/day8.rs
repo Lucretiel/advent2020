@@ -94,11 +94,6 @@ impl Machine {
             .map_err(|_| MachineError::IPOutOfBounds(self.ip))
     }
 
-    /// Get the operation at the current IP. panics if IP is out of bounds
-    pub fn fetch_operation(&self) -> &Operation {
-        &self.code[self.get_just_ip().expect("IP out of bounds")]
-    }
-
     pub fn new(code: Vec<Operation>) -> Self {
         Machine {
             visited: bitvec![0; code.len()],
