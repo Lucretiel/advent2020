@@ -9,6 +9,7 @@ mod day3;
 mod day4;
 mod day5;
 mod day6;
+mod day7;
 
 use std::{
     fs,
@@ -188,6 +189,8 @@ fn main() -> anyhow::Result<()> {
         day5, part2;
         day6, part1;
         day6, part2;
+        day7, part1;
+        day7, part2;
     );
 
     Ok(())

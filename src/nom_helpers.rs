@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    fmt::{self, Display, Formatter, Write},
+    fmt::{self, Debug, Display, Formatter, Write},
 };
 
 use cascade::cascade;
@@ -151,8 +151,8 @@ impl Display for BaseErrorKind {
             BaseErrorKind::Tag(tag) => write!(f, "expected {:?}", tag),
             BaseErrorKind::Char(character) => write!(f, "expected {:?}", character),
             BaseErrorKind::Context(context) => write!(f, "in section '{}'", context),
-            BaseErrorKind::External(kind, ref err) => write!(f, "{:?}: {}", kind, err),
-            BaseErrorKind::Kind(kind) => write!(f, "{:?}", kind),
+            BaseErrorKind::External(kind, ref err) => write!(f, "while parsing{:?}: {}", kind, err),
+            BaseErrorKind::Kind(kind) => write!(f, "while parsing {:?}", kind),
         }
     }
 }
@@ -223,6 +223,8 @@ impl<I: Display> Display for NomError<I> {
         }
     }
 }
+
+impl<I: Display + Debug> Error for NomError<I> {}
 
 impl<I> ParseError<I> for NomError<I> {
     /// Create a new error at the given position
