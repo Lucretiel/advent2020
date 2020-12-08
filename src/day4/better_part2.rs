@@ -15,7 +15,7 @@ use nom::{
 };
 
 use crate::common::parse_from_str;
-use crate::nom_helpers::{final_parser, tag, Location, NomError, TagError};
+use crate::nom_helpers::{final_str_parser, tag, Location, NomError, TagError};
 
 fn passport_field<'a, E>(label: &'static str) -> impl Parser<&'a str, &'a str, E>
 where
@@ -180,7 +180,7 @@ struct Document {
 }
 
 fn parse_document(input: &str) -> Result<Document, NomError<Location>> {
-    final_parser(map_opt(
+    final_str_parser(map_opt(
         fold_many0(
             terminated(parse_field, alt((multispace1, eof))),
             PartialDocument::default(),

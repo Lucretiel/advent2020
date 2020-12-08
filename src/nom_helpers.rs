@@ -1,9 +1,11 @@
 use std::{
     error::Error,
-    fmt::{self, Display, Formatter},
+    fmt::{self, Display, Formatter, Write},
 };
 
 use cascade::cascade;
+use indent_write::fmt::IndentWriter;
+use joinery::prelude::*;
 use nom::{
     combinator::{all_consuming, complete},
     error::{ContextError, ErrorKind as NomErrorKind, FromExternalError, ParseError},
@@ -189,8 +191,18 @@ impl<I: Display> Display for NomError<I> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             NomError::Base { kind, location } => write!(f, "{} at {:#}", kind, location),
-            NomError::Stack(_) => todo!(),
-            NomError::Alt(_) => todo!(),
+            NomError::Stack(stack) => {
+                writeln!(f, "trace:")?;
+                let mut f = IndentWriter::new("  ", f);
+                let trace = stack.iter().join_with(",\n");
+                write!(f, "{}", trace)
+            }
+            NomError::Alt(siblings) => {
+                writeln!(f, "one of:")?;
+                let mut f = IndentWriter::new("  ", f);
+                let alts = siblings.iter().join_with(", or\n");
+                write!(f, "{}", alts)
+            }
         }
     }
 }
@@ -314,6 +326,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub fn tag_case_insensitive<T, I, E>(tag: T) -> impl Clone + Fn(I) -> IResult<I, I, E>
 where
     T: InputLength + Clone,
@@ -352,4 +365,12 @@ where
             unreachable!("Complete combinator should make this impossible")
         }
     }
+}
+
+/// To make our lives easier, this function is the same as final_parser, but
+/// more specific types
+pub fn final_str_parser<'a, O>(
+    parser: impl Parser<&'a str, O, NomError<&'a str>>,
+) -> impl FnMut(&'a str) -> Result<O, NomError<Location>> {
+    final_parser(parser)
 }
