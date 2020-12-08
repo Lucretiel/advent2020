@@ -5,7 +5,7 @@ use std::{marker::PhantomData, ops::RangeTo};
 
 use nom::{
     combinator::{all_consuming, complete, cut, recognize, verify},
-    error::ParseError,
+    error::{context, ParseError},
     Err as NomErr, InputLength, Offset, Parser, Slice,
 };
 
@@ -43,6 +43,7 @@ pub trait ParserExt<I, O, E>: Parser<I, O, E> + Sized {
     fn recognize(self) -> Recognize<Self, O>
     where
         I: Clone + Slice<RangeTo<usize>> + Offset,
+        E: ParseError<I>,
     {
         Recognize {
             parser: self,
@@ -50,7 +51,11 @@ pub trait ParserExt<I, O, E>: Parser<I, O, E> + Sized {
         }
     }
 
-    fn value<T: Clone>(self, value: T) -> Value<T, Self, O> {
+    fn value<T>(self, value: T) -> Value<T, Self, O>
+    where
+        E: ParseError<I>,
+        T: Clone,
+    {
         Value {
             parser: self,
             value,
@@ -58,13 +63,29 @@ pub trait ParserExt<I, O, E>: Parser<I, O, E> + Sized {
         }
     }
 
-    fn verify<F>(self, verifier: F)
+    fn verify<F>(self, verifier: F) -> Verify<Self, F>
     where
         F: Fn(&O) -> bool,
-        I: Clone;
+        I: Clone,
+        E: ParseError<I>,
+    {
+        Verify {
+            parser: self,
+            verifier,
+        }
+    }
 
-    fn context(self, context: &'static str);
+    fn context(self, context: &'static str) -> Context<Self>
+    where
+        E: ParseError<I>,
+    {
+        Context {
+            context,
+            parser: self,
+        }
+    }
 
+    /*
     fn fill<T>(self, target: &mut [O]);
 
     fn terminated<F, O2>(self, terminator: F)
@@ -78,7 +99,10 @@ pub trait ParserExt<I, O, E>: Parser<I, O, E> + Sized {
     fn preceded_by<F, O2>(self, proceeder: F)
     where
         F: Parser<I, O2, E>;
+    */
 }
+
+impl<I, O, E, P> ParserExt<I, O, E> for P where P: Parser<I, O, E> {}
 
 /// Parser which fails if the whole input isn't consumed
 #[derive(Debug, Clone, Copy)]
@@ -160,7 +184,7 @@ pub struct Recognize<P, O> {
 impl<I, O, E, P> Parser<I, I, E> for Recognize<P, O>
 where
     P: Parser<I, O, E>,
-    E: nom::error::ParseError<I>,
+    E: ParseError<I>,
     I: Clone + Slice<RangeTo<usize>> + Offset,
 {
     fn parse(&mut self, input: I) -> nom::IResult<I, I, E> {
@@ -197,7 +221,7 @@ pub struct Verify<P, F> {
 impl<I, O, E, P, F> Parser<I, O, E> for Verify<P, F>
 where
     P: Parser<I, O, E>,
-    E: nom::error::ParseError<I>,
+    E: ParseError<I>,
     F: Fn(&O) -> bool,
     I: Clone,
 {
@@ -215,4 +239,14 @@ where
 struct Context<P> {
     context: &'static str,
     parser: P,
+}
+
+impl<I, O, E, P> Parser<I, O, E> for Context<P>
+where
+    P: Parser<I, O, E>,
+    E: ParseError<I>,
+{
+    fn parse(&mut self, input: I) -> nom::IResult<I, O, E> {
+        context(self.context, |i| self.parser.parse(i)).parse(input)
+    }
 }

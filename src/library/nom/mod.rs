@@ -2,6 +2,7 @@
 
 mod error;
 mod final_parser;
+mod parser_ext;
 mod tag;
 
 use std::str::FromStr;
@@ -17,6 +18,7 @@ pub use self::{
     final_parser::{
         final_parser, final_str_parser, ByteOffset, ExtractContext, Location, RecombineInput,
     },
+    parser_ext::ParserExt,
     tag::{tag, tag_case_insensitive, TagError},
 };
 
@@ -41,7 +43,7 @@ where
 /// each parsed item will be folded into the accumulator via the fold function.
 ///
 /// After parsing each item, `parse_separated_terminated` will attempt to
-/// parse a terminator. If it succeeds, it will return the accumulated item;
+/// parse a terminator. If it succeeds, it will return the accumulator;
 /// otherwise, it will attempt to parse a separator. If it fails to parse
 /// either a separator or a terminator, it will return an error; otherwise,
 /// it will continue on to parse and fold the next item.
