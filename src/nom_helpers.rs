@@ -35,22 +35,26 @@ pub trait TagError<T, I>: Sized {
 ///
 /// It has two typical use patterns:
 ///
-/// - `ExtractContext<I, T> for I`: this indicates a direct recombination of
-///   original input with error context, typically facilitated by T. For
-///   instance, `&str` implements `ExtractContext<&str, Location>`, which
-///   allows extracting the line and column number where an error occurred.
-/// - `ExtractContext<I, E<T>> for E<I>`: this indicates that some error type
-///   `E`, which is generic over the input type, can be converted into another
-///   variant of that error, using `T` instead of `I` to hold the result
-///   context.
-pub trait ExtractContext<I, T> {
-    /// Given the context attached to a nom error, and given the *original*
-    /// input to the nom parser, extract more the useful context information.
-    ///
-    /// For example, for a string, 1 possible context extraction would be the
-    /// Location (line and column number) in the original input where the error
-    /// indicated by self occurred.
-    fn extract_context(self, original_input: I) -> T;
+/// For instance, `&str` implements `RecombineInput<Location>`, which
+/// allows extracting the line and column number where an error occurred.
+pub trait RecombineInput<T>: Sized {
+    fn recombine_input(self, original_input: Self) -> T;
+}
+
+impl<T> RecombineInput<T> for T {
+    fn recombine_input(self, _: Self) -> T {
+        self
+    }
+}
+
+/// A byte offset into the input where an error may have occurred
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ByteOffset(pub usize);
+
+impl<I: Offset> RecombineInput<ByteOffset> for I {
+    fn recombine_input(self, original_input: Self) -> ByteOffset {
+        ByteOffset(original_input.offset(&self))
+    }
 }
 
 /// A location in a string where an error may have occurred. In keeping with
@@ -61,33 +65,8 @@ pub trait ExtractContext<I, T> {
 /// index is instead returned via the "Flat" variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Location {
-    line: usize,
-    column: usize,
-}
-
-impl Display for Location {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "line {}, column {}", self.line, self.column)
-        } else {
-            write!(f, "{}:{}", self.line, self.column)
-        }
-    }
-}
-
-impl<'a> ExtractContext<&'a str, Location> for &'a str {
-    fn extract_context(self, original_input: Self) -> Location {
-        Location::from_context(original_input, self)
-    }
-}
-
-impl<I> ExtractContext<I, usize> for I
-where
-    I: Offset,
-{
-    fn extract_context(self, original_input: Self) -> usize {
-        original_input.offset(&self)
-    }
+    pub line: usize,
+    pub column: usize,
 }
 
 impl Location {
@@ -117,6 +96,44 @@ impl Location {
             column: column_number,
         }
     }
+}
+
+impl Display for Location {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "line {}, column {}", self.line, self.column)
+        } else {
+            write!(f, "{}:{}", self.line, self.column)
+        }
+    }
+}
+
+impl RecombineInput<Location> for &str {
+    fn recombine_input(self, original_input: Self) -> Location {
+        Location::from_context(original_input, self)
+    }
+}
+
+/// Trait for recombining error information with the original input.
+///
+/// This trait is used to take the context information attached to nom errors-
+/// specifically, the tail of the input indicating the location of the input-
+/// and recombine it with the *original* input to produce an error with
+/// something more useful for error reporting.
+///
+/// Typically, it looks like  `ExtractContext<I, E<T>> for E<I>`. This
+/// indicates that some error type `E`, which is generic over the input type,
+/// can be converted into another variant of that error, using `T` instead of
+/// `I` to hold the result context. Often this context conversion can happen
+/// with RecombineInput
+pub trait ExtractContext<I, T> {
+    /// Given the context attached to a nom error, and given the *original*
+    /// input to the nom parser, extract more the useful context information.
+    ///
+    /// For example, for a string, 1 possible context extraction would be the
+    /// Location (line and column number) in the original input where the error
+    /// indicated by self occurred.
+    fn extract_context(self, original_input: I) -> T;
 }
 
 #[derive(Debug)]
@@ -157,7 +174,7 @@ pub enum NomError<I> {
 }
 
 impl<I> NomError<I> {
-    pub fn map_locations_ref<T>(self, convert_location: &mut impl FnMut(I) -> T) -> NomError<T> {
+    fn map_locations_ref<T>(self, convert_location: &mut impl FnMut(I) -> T) -> NomError<T> {
         match self {
             NomError::Base { location, kind } => NomError::Base {
                 location: convert_location(location),
@@ -307,10 +324,10 @@ impl<I> TagError<&'static str, I> for NomError<I> {
 
 impl<I, T> ExtractContext<I, NomError<T>> for NomError<I>
 where
-    I: Clone + ExtractContext<I, T>,
+    I: Clone + RecombineInput<T>,
 {
     fn extract_context(self, original_input: I) -> NomError<T> {
-        self.map_locations(move |location| location.extract_context(original_input.clone()))
+        self.map_locations(move |location| location.recombine_input(original_input.clone()))
     }
 }
 
