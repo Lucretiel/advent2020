@@ -59,6 +59,17 @@ impl BoolExt for bool {
     }
 }
 
+pub trait FoldFirst: Sized + Iterator {
+    fn fold_first<F>(mut self, op: F) -> Option<Self::Item>
+    where
+        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+    {
+        self.next().map(move |first| self.fold(first, op))
+    }
+}
+
+impl<T: Iterator> FoldFirst for T {}
+
 /// A nom parser that parses any FromStr type. It uses a recognizer to parse
 /// the prefix string that should be parsed via FromStr
 pub fn parse_from_str<'a, F, T, E>(recognizer: F) -> impl Parser<&'a str, T, E>

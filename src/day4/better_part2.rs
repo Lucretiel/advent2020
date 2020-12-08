@@ -5,11 +5,9 @@
 
 use nom::{
     branch::alt,
-    bytes::complete::{is_not, tag, take_while_m_n},
+    bytes::complete::{is_not, take_while_m_n},
     character::complete::{char, digit1, multispace1},
-    combinator::eof,
-    combinator::verify,
-    combinator::{all_consuming, map_opt, map_res, value},
+    combinator::{all_consuming, eof, map_opt, map_res, value, verify},
     error::ParseError,
     multi::fold_many0,
     sequence::{pair, preceded, terminated, tuple},
@@ -17,10 +15,11 @@ use nom::{
 };
 
 use crate::common::parse_from_str;
+use crate::nom_helpers::{final_parser, tag, Location, NomError, TagError};
 
 fn passport_field<'a, E>(label: &'static str) -> impl Parser<&'a str, &'a str, E>
 where
-    E: ParseError<&'a str>,
+    E: ParseError<&'a str> + TagError<&'static str, &'a str>,
 {
     preceded(pair(tag(label), char(':')), is_not(" \t\n\r"))
 }
@@ -31,7 +30,7 @@ enum Height {
     In(u32),
 }
 
-fn parse_height(input: &str) -> IResult<&str, Height> {
+fn parse_height(input: &str) -> IResult<&str, Height, NomError<&str>> {
     alt((
         terminated(parse_from_str(digit1), tag("cm")).map(Height::Cm),
         terminated(parse_from_str(digit1), tag("in")).map(Height::In),
@@ -45,7 +44,7 @@ struct Color {
     blue: u8,
 }
 
-fn parse_hex_u8(input: &str) -> IResult<&str, u8> {
+fn parse_hex_u8(input: &str) -> IResult<&str, u8, NomError<&str>> {
     map_res(
         take_while_m_n(2, 2, |c: char| {
             c.is_ascii_hexdigit() && !c.is_ascii_uppercase()
@@ -54,7 +53,7 @@ fn parse_hex_u8(input: &str) -> IResult<&str, u8> {
     )(input)
 }
 
-fn parse_color(input: &str) -> IResult<&str, Color> {
+fn parse_color(input: &str) -> IResult<&str, Color, NomError<&str>> {
     preceded(char('#'), tuple((parse_hex_u8, parse_hex_u8, parse_hex_u8)))
         .map(|(red, green, blue)| Color { red, green, blue })
         .parse(input)
@@ -71,7 +70,7 @@ enum EyeColor {
     Other,
 }
 
-fn parse_eye_color(input: &str) -> IResult<&str, EyeColor> {
+fn parse_eye_color(input: &str) -> IResult<&str, EyeColor, NomError<&str>> {
     alt((
         value(EyeColor::Amber, tag("amb")),
         value(EyeColor::Blue, tag("blu")),
@@ -86,7 +85,7 @@ fn parse_eye_color(input: &str) -> IResult<&str, EyeColor> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct PassportId(u32);
 
-fn parse_passport_id(input: &str) -> IResult<&str, PassportId> {
+fn parse_passport_id(input: &str) -> IResult<&str, PassportId, NomError<&str>> {
     parse_from_str(verify(digit1, |d: &str| d.len() == 9))
         .map(PassportId)
         .parse(input)
@@ -104,7 +103,7 @@ enum Field {
     CountryId(()),
 }
 
-fn parse_field(input: &str) -> IResult<&str, Field> {
+fn parse_field(input: &str) -> IResult<&str, Field, NomError<&str>> {
     alt((
         parse_from_str(verify(passport_field("byr"), |s: &str| s.len() == 4)).map(Field::BirthYear),
         parse_from_str(verify(passport_field("iyr"), |s: &str| s.len() == 4)).map(Field::IssueYear),
@@ -180,8 +179,8 @@ struct Document {
     passport_id: PassportId,
 }
 
-fn parse_document(input: &str) -> IResult<&str, Document> {
-    all_consuming(map_opt(
+fn parse_document(input: &str) -> Result<Document, NomError<Location>> {
+    final_parser(map_opt(
         fold_many0(
             terminated(parse_field, alt((multispace1, eof))),
             PartialDocument::default(),

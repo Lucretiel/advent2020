@@ -1,7 +1,7 @@
 #![allow(unstable_name_collisions)]
 
 mod common;
-// mod nom_helpers;
+mod nom_helpers;
 
 mod day1;
 mod day2;

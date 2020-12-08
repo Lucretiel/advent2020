@@ -37,7 +37,6 @@ impl Default for BoardingPass {
 }
 
 #[derive(Debug, Clone, Error)]
-
 enum BoardingPassParseError {
     #[error("unexpected character {character:?} at row index {idx}")]
     Row { idx: usize, character: char },
