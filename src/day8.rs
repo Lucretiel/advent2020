@@ -94,6 +94,11 @@ impl Machine {
             .map_err(|_| MachineError::IPOutOfBounds(self.ip))
     }
 
+    /// Get the operation at the current IP. panics if IP is out of bounds
+    pub fn fetch_operation(&self) -> &Operation {
+        &self.code[self.get_just_ip().expect("IP out of bounds")]
+    }
+
     pub fn new(code: Vec<Operation>) -> Self {
         Machine {
             visited: bitvec![0; code.len()],
@@ -234,3 +239,37 @@ pub fn part2(input: &str) -> anyhow::Result<i32> {
         .context("Couldn't find a solution")?
         .context("Machine encountered an error")
 }
+
+// Alternate solution based on "forking" execution, running the machine one step
+// at a time and forking it when it encounters a jmp or nop. Wasn't any faster
+// than the previous version and is more complicated.
+/*
+pub fn part2(input: &str) -> anyhow::Result<i32> {
+    let program = load_code(input).context("error loading program")?;
+    let mut machine = Machine::new(program);
+
+    loop {
+        if machine.fetch_operation().instruction != Instruction::Accum {
+            let mut fork = machine.clone().mutate(machine.ip as usize).unwrap();
+
+            if let MachineTermination::Terminated(value) =
+                fork.run().context("Forked machine encountered an error")?
+            {
+                return Ok(value);
+            }
+        }
+
+        if let Some(terminated) = machine.step() {
+            match terminated {
+                Ok(MachineTermination::Terminated(..)) => {
+                    bail!("Unmutated machine terminated successfully")
+                }
+                Ok(MachineTermination::InfiniteLoop(..)) => {
+                    bail!("Machine looped without a solution")
+                }
+                Err(err) => return Err(err).context("Base machine encountered an error"),
+            }
+        }
+    }
+}
+*/
