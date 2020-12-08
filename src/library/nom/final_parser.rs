@@ -15,8 +15,6 @@ use super::NomError;
 /// and recombine it with the *original* input to produce something more useful
 /// for error reporting.
 ///
-/// It has two typical use patterns:
-///
 /// For instance, `&str` implements `RecombineInput<Location>`, which
 /// allows extracting the line and column number where an error occurred.
 pub trait RecombineInput<T>: Sized {
