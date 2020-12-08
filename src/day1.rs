@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use anyhow::Context;
 
-use crate::common::parse_items;
+use crate::library::parse_items_ws;
 
 fn solve_recursive(values: &BTreeSet<i64>, min: i64, target: i64, depth: u32) -> Option<i64> {
     match depth {
@@ -16,7 +16,7 @@ fn solve_recursive(values: &BTreeSet<i64>, min: i64, target: i64, depth: u32) ->
 }
 
 fn solve(input: &str, depth: u32) -> anyhow::Result<i64> {
-    let values: BTreeSet<i64> = parse_items(input)?;
+    let values: BTreeSet<i64> = parse_items_ws(input)?;
 
     solve_recursive(&values, 0, 2020, depth).context("The problem has no solution!")
 }

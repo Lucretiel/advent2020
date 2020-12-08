@@ -7,4 +7,4 @@ pub mod nom;
 mod parse_items;
 
 pub use boolext::BoolExt;
-pub use parse_items::{parse_items, parse_items_iter};
+pub use parse_items::{parse_items, parse_items_lines, parse_items_ws};

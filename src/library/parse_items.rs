@@ -15,23 +15,33 @@ pub struct ParseItemsError<E: Error + 'static> {
     error: E,
 }
 
-/// Advent of Code commonly gives input as a uniform list of newline or
-/// whitespace separated items. This parses such a list by splitting on
-/// whitespace and then parsing each individual element. This function is
-/// generic over any parsable input item T, and any collection C which is
-/// FromIterator<T>.
-pub fn parse_items<T, C>(input: &str) -> Result<C, ParseItemsError<T::Err>>
+/// `parse_items`, but it specifically parses whitespace separated components
+/// of the input
+pub fn parse_items_ws<T, C>(input: &str) -> Result<C, ParseItemsError<T::Err>>
 where
     T: FromStr,
     C: FromIterator<T>,
     T::Err: Error,
 {
-    parse_items_iter(input.split_whitespace())
+    parse_items(input.split_whitespace())
 }
 
-/// Even more generic version of `parse_items`; takes an iterator of &str for
-/// parsing.
-pub fn parse_items_iter<'a, I, T, C>(input: I) -> Result<C, ParseItemsError<T::Err>>
+/// `parse_items`, but it specifically parses all lines of the input.
+pub fn parse_items_lines<T, C>(input: &str) -> Result<C, ParseItemsError<T::Err>>
+where
+    T: FromStr,
+    C: FromIterator<T>,
+    T::Err: Error,
+{
+    parse_items(input.lines())
+}
+
+/// Advent of Code commonly gives input as a uniform list of separated items.
+/// his parses such a list by splitting on whitespace and then parsing each
+/// individual element. This function is generic over any parsable input item
+/// T, and any collection C which is FromIterator<T>. Any errors are wrapped,
+/// indicating which element failed to parse.
+pub fn parse_items<'a, I, T, C>(input: I) -> Result<C, ParseItemsError<T::Err>>
 where
     I: IntoIterator<Item = &'a str>,
     T: FromStr,

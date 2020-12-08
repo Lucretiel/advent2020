@@ -12,7 +12,7 @@ use nom::{
 
 use anyhow::Context;
 
-use crate::common::{parse_from_str, BoolExt};
+use crate::library::{nom::parse_from_str, BoolExt};
 
 fn parse_number(input: &str) -> IResult<&str, usize> {
     parse_from_str(digit1).parse(input)

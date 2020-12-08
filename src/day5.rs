@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::Context;
 use thiserror::Error;
 
-use crate::common::{parse_items, BoolExt};
+use crate::library::{parse_items_ws, BoolExt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Instruction {
@@ -125,7 +125,7 @@ fn evaluate_instructions(
 }
 
 pub fn part1(input: &str) -> anyhow::Result<i32> {
-    let boarding_passes: Vec<BoardingPass> = parse_items(input)?;
+    let boarding_passes: Vec<BoardingPass> = parse_items_ws(input)?;
 
     boarding_passes
         .into_iter()
@@ -137,7 +137,7 @@ pub fn part1(input: &str) -> anyhow::Result<i32> {
 }
 
 pub fn part2(input: &str) -> anyhow::Result<i32> {
-    let boarding_passes: Vec<BoardingPass> = parse_items(input)?;
+    let boarding_passes: Vec<BoardingPass> = parse_items_ws(input)?;
     let seat_ids: anyhow::Result<Vec<i32>> = boarding_passes
         .into_iter()
         .map(|pass| {

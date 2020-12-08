@@ -2,9 +2,6 @@
 
 mod library;
 
-// These are replaced by mod library, but retained for backwards compatibility
-mod common;
-
 mod day1;
 mod day2;
 mod day3;

@@ -14,8 +14,7 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::common::parse_from_str;
-use crate::library::nom::{final_str_parser, tag, Location, NomError, TagError};
+use crate::library::nom::{final_str_parser, parse_from_str, tag, Location, NomError, TagError};
 
 fn passport_field<'a, E>(label: &'static str) -> impl Parser<&'a str, &'a str, E>
 where
