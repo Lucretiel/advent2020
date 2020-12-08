@@ -12,6 +12,7 @@ mod day4;
 mod day5;
 mod day6;
 mod day7;
+mod day8;
 
 use std::{
     fs,
@@ -151,7 +152,7 @@ macro_rules! solver_picker {
             $(
                 (SolutionDay::$Day, SolutionPart::$Part) => println!("{}", $Day::$Part($input)?),
             )*
-            (day, part) => anyhow::bail!("No solution for {:?}, {:?}", day, part),
+            (day, part) => anyhow::bail!("No solution code for {:?}, {:?}", day, part),
         }
     }};
 }
@@ -193,6 +194,8 @@ fn main() -> anyhow::Result<()> {
         day6, part2;
         day7, part1;
         day7, part2;
+        day8, part1;
+        day8, part2;
     );
 
     Ok(())

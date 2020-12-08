@@ -5,6 +5,7 @@ name = "advent2020"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitvec",
  "cascade",
  "gridly",
  "gridly_adapters",

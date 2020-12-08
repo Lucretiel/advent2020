@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.34"
+bitvec = "0.19.4"
 cascade = "1.0.0"
 gridly = "0.9.0"
 gridly_adapters = "0.1.0"

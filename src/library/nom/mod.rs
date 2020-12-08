@@ -2,7 +2,7 @@
 
 mod error;
 mod final_parser;
-mod parser_ext;
+// mod parser_ext;
 mod tag;
 
 use std::str::FromStr;
@@ -18,7 +18,6 @@ pub use self::{
     final_parser::{
         final_parser, final_str_parser, ByteOffset, ExtractContext, Location, RecombineInput,
     },
-    parser_ext::ParserExt,
     tag::{tag, tag_case_insensitive, TagError},
 };
 
