@@ -1,7 +1,9 @@
 #![allow(unstable_name_collisions)]
 
+mod library;
+
+// These are replaced by mod library, but retained for backwards compatibility
 mod common;
-mod nom_helpers;
 
 mod day1;
 mod day2;

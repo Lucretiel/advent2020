@@ -14,10 +14,7 @@ use nom::{
 };
 use thiserror::Error;
 
-use crate::{
-    common::parse_from_str,
-    nom_helpers::{final_str_parser, tag, NomError},
-};
+use crate::library::nom::{final_str_parser, parse_from_str, tag, NomError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Bag<'a> {
