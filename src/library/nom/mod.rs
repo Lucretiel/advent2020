@@ -2,7 +2,7 @@
 
 mod error;
 mod final_parser;
-// mod parser_ext;
+mod parser_ext;
 mod tag;
 
 use std::str::FromStr;
