@@ -1,4 +1,4 @@
-use std::{convert::TryInto, iter, num::ParseIntError, str::FromStr};
+use std::{convert::TryInto, num::ParseIntError, str::FromStr};
 
 use anyhow::{bail, Context};
 use bitvec::{bitvec, vec::BitVec};
@@ -182,9 +182,6 @@ pub fn part1(input: &str) -> anyhow::Result<i32> {
     }
 }
 
-// This is a cool multithreaded that nonetheless takes twice as long to finish
-// (~25ms vs ~12ms) on my machine
-
 use rayon::prelude::*;
 pub fn part2(input: &str) -> anyhow::Result<i32> {
     let program = load_code(input).context("error loading program")?;
@@ -202,13 +199,14 @@ pub fn part2(input: &str) -> anyhow::Result<i32> {
             Ok(MachineTermination::Terminated(value)) => Some(Ok(value)),
             _ => None,
         })
-        // We're unpacking an Option<result<..>> here
+        // We're unpacking an Option<Result<..>> here
         .context("Couldn't find a solution")?
         .context("Machine encountered an error")
 }
 
 // Single threaded version
 /*
+use std::iter
 pub fn part2(input: &str) -> anyhow::Result<i32> {
     let program = load_code(input).context("error loading program")?;
     let machine = Machine::new(program);
