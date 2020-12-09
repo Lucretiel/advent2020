@@ -184,22 +184,17 @@ pub fn part1(input: &str) -> anyhow::Result<i32> {
 
 // This is a cool multithreaded that nonetheless takes twice as long to finish
 // (~25ms vs ~12ms) on my machine
-/*
+
 use rayon::prelude::*;
 pub fn part2(input: &str) -> anyhow::Result<i32> {
     let program = load_code(input).context("error loading program")?;
     let machine = Machine::new(program);
-    let inst_count = machine.code.len();
 
-    let mut candidates: Vec<(usize, Machine)> = iter::repeat(machine)
-        .enumerate()
-        .take(inst_count)
+    (0..machine.code.len())
+        .into_par_iter()
+        .map(|i| (i, machine.clone()))
         .filter_map(|(i, machine)| machine.mutate(i).map(|machine| (i, machine)))
-        .collect();
-
-    candidates
-        .par_iter_mut()
-        .map(|&mut (i, ref mut machine)| (i, machine.run()))
+        .map(|(i, mut machine)| (i, machine.run()))
         .find_map_any(|(i, result)| match result {
             Err(err) => {
                 Some(Err(err).with_context(|| format!("Machine {} encountered an error", i)))
@@ -211,8 +206,9 @@ pub fn part2(input: &str) -> anyhow::Result<i32> {
         .context("Couldn't find a solution")?
         .context("Machine encountered an error")
 }
-*/
 
+// Single threaded version
+/*
 pub fn part2(input: &str) -> anyhow::Result<i32> {
     let program = load_code(input).context("error loading program")?;
     let machine = Machine::new(program);
@@ -234,6 +230,7 @@ pub fn part2(input: &str) -> anyhow::Result<i32> {
         .context("Couldn't find a solution")?
         .context("Machine encountered an error")
 }
+*/
 
 // Alternate solution based on "forking" execution, running the machine one step
 // at a time and forking it when it encounters a jmp or nop. Wasn't any faster
