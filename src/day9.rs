@@ -22,6 +22,20 @@ impl XmasDecoder {
     /// preamble, push it into the back preamble, and pop off the front of the
     /// preamble. Return true if we succeeded at this.
     fn process(&mut self, target: i64) -> bool {
+        // I'm not entirely sure what the performance implications are of doing
+        // this in a loop. My hope is that, by reserving an amount of memory
+        // sufficient for ALL the values (not just the first 25), it won't
+        // happen too often.
+        //
+        // For reference, a VecDeque is implemented as a flat circular array
+        // that "wraps around". `make_contiguous` shifts the items in the
+        // array such that they form a single, contiguous slice. Done naively,
+        // doing this in a loop means that we're basically just doing
+        // `vec.remove(0)`, which obviously we don't want to do.
+        //
+        // We do this because it isn't possible to take a subslice of a plain
+        // deque, because the contents might wrap around the back to the front.
+        // In the future we'll just use .range, but right now it's nightly only
         let slice: &[i64] = self.preamble.make_contiguous();
 
         let success = slice
