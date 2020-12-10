@@ -26,7 +26,6 @@ fn parse_bag(input: &str) -> IResult<&str, Bag, NomError<&str>> {
     take_until("bag")
         .terminated(tag("bags").or(tag("bag")))
         .map(|s: &str| s.trim_end())
-        .verify(|&s| s.trim() == s)
         .map(|name| Bag { name })
         .context("bag name")
         .parse(input)
