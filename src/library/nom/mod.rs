@@ -18,6 +18,7 @@ pub use self::{
     final_parser::{
         final_parser, final_str_parser, ByteOffset, ExtractContext, Location, RecombineInput,
     },
+    parser_ext::*,
     tag::{tag, tag_case_insensitive, TagError},
 };
 
@@ -84,6 +85,8 @@ where
                     break Err(err.map(|err| E::append(input.clone(), ErrorKind::Many1, err)))
                 }
             };
+
+            accum = fold(accum, value);
             input = tail;
 
             // Try to find a terminator; if we found it, we're done.
@@ -133,7 +136,6 @@ where
             };
 
             input = tail;
-            accum = fold(accum, value);
         }
     }
 }

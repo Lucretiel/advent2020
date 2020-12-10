@@ -76,9 +76,17 @@ pub trait Subtask<K, V> {
 }
 
 pub trait Task<K, V, E> {
-    fn solve<'sub, T>(&self, key: &K, subtasker: &'sub T) -> Result<V, TaskInterrupt<'sub, K, E>>
+    fn solve<'sub, T>(&self, goal: &K, subtasker: &'sub T) -> Result<V, TaskInterrupt<'sub, K, E>>
     where
         T: Subtask<K, V>;
+
+    fn solve_all<S: SubtaskStore<K, V> + Default>(&self, goal: K) -> Result<V, DynamicError<K, E>>
+    where
+        Self: Sized,
+        K: PartialEq,
+    {
+        execute(goal, self, S::default())
+    }
 }
 
 #[derive(Debug)]
@@ -141,10 +149,23 @@ where
 
 /// Solve a dynamic algorithm.
 ///
-/// This will run task.solve(&goal). The task can signal dependencu
+/// This will run task.solve(&goal, subtasker). The task can request subgoal
+/// solutions by calling `subtasker.solve(subgoal)?`; this will halt the
+/// function and call task.solve(&subgoal, subtasker). In this way, execute
+/// performs a depth-first traversal of the problem space. Solutions to subtasks
+/// are stored in the store and are provided by the subtasker to the caller
+/// when available; this ensures that each subtask is solved at most once.
+///
+/// Note that every time a subtask is requested but not available, the ? will
+/// return a dependency request from the solver. This means the solver will be
+/// restarted from scratch once for each dependency it requests, until the
+/// store can fulfill them all. To prevent wasting work finding a partial
+/// solution, you can call `subtasker.precheck(iter)?` at the beginning of
+/// your Task::solve implementation with an iterator over all the subgoal
+/// dependencies you're expecting
 pub fn execute<K: PartialEq, V, E, T: Task<K, V, E>, S: SubtaskStore<K, V>>(
     goal: K,
-    task: T,
+    task: &T,
     store: S,
 ) -> Result<V, DynamicError<K, E>> {
     let mut subtasker = Subtasker { store };

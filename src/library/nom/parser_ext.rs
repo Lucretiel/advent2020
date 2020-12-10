@@ -118,6 +118,18 @@ pub trait ParserExt<I, O, E>: Parser<I, O, E> + Sized {
             phantom: PhantomData,
         }
     }
+
+    fn delimited_by_both<F, O1>(self, delimiter: F) -> Delimited<F, Self, F, O1, O1>
+    where
+        F: Parser<I, O1, E> + Clone,
+    {
+        Delimited {
+            prefix: delimiter.clone(),
+            suffix: delimiter,
+            parser: self,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<I, O, E, P> ParserExt<I, O, E> for P where P: Parser<I, O, E> {}

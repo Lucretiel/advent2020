@@ -1,14 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use nom::{
-    branch::alt,
     bytes::complete::take_until,
-    character::complete::{char, digit1, multispace1, space1},
-    combinator::value,
-    error::context,
+    character::complete::{char, digit1, multispace1, space0, space1},
     error::{ErrorKind, FromExternalError},
-    multi::separated_list1,
-    sequence::{pair, separated_pair, terminated, tuple},
+    sequence::separated_pair,
     Err, IResult, Parser,
 };
 
@@ -17,7 +13,7 @@ use thiserror::Error;
 
 use crate::library::{
     self,
-    nom::{final_str_parser, parse_from_str, tag, NomError},
+    nom::{final_str_parser, parse_from_str, parse_separated_terminated, tag, NomError, ParserExt},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -27,13 +23,13 @@ struct Bag<'a> {
 
 /// Parse a string like "red bag" or "light green bags"
 fn parse_bag(input: &str) -> IResult<&str, Bag, NomError<&str>> {
-    context(
-        "bag",
-        terminated(take_until("bag"), alt((tag("bags"), tag("bag"))))
-            .map(|s: &str| s.trim_end())
-            .map(|name| Bag { name }),
-    )
-    .parse(input)
+    take_until("bag")
+        .terminated(tag("bags").or(tag("bag")))
+        .map(|s: &str| s.trim_end())
+        .verify(|&s| s.trim() == s)
+        .map(|name| Bag { name })
+        .context("bag name")
+        .parse(input)
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -41,39 +37,39 @@ struct BagRule<'a> {
     contents: HashMap<Bag<'a>, usize>,
 }
 
-/// Parse a string like "1 red bag, 2 green bags."
+/// Parse a string like "1 red bag"
+fn parse_counted_bag(input: &str) -> IResult<&str, (usize, Bag), NomError<&str>> {
+    separated_pair(parse_from_str(digit1), space1, parse_bag)
+        .context("bag count")
+        .parse(input)
+}
+
+/// Parse a string like "1 red bag, 2 green bags.", or a string like "no other bags."
 fn parse_bag_rule(input: &str) -> IResult<&str, BagRule, NomError<&str>> {
-    context(
-        "bag rule",
-        terminated(
-            alt((
-                value(Vec::new(), tag("no other bags")),
-                separated_list1(
-                    pair(char(','), space1),
-                    separated_pair(parse_from_str(digit1), space1, parse_bag),
-                ),
-            )),
-            pair(char('.'), multispace1),
-        ),
+    parse_separated_terminated(
+        parse_counted_bag,
+        char(',').terminated(space0),
+        char('.'),
+        HashMap::new,
+        |mut contents, (count, bag)| {
+            contents.insert(bag, count);
+            contents
+        },
     )
-    .map(|rules_list| BagRule {
-        contents: rules_list
-            .into_iter()
-            .map(|(count, bag)| (bag, count))
-            .collect(),
-    })
+    .or(tag("no other bags.").value(HashMap::new()))
+    .terminated(multispace1)
+    .map(|contents| BagRule { contents })
     .parse(input)
 }
 
+/// Parse a string like "red bags contain 2 blue bags, 1 green bag."
 fn parse_bag_with_rule(input: &str) -> IResult<&str, (Bag, BagRule), NomError<&str>> {
-    context(
-        "bag with rule",
-        separated_pair(
-            parse_bag,
-            tuple((space1, tag("contain"), space1)),
-            parse_bag_rule,
-        ),
+    separated_pair(
+        parse_bag.context("rule: target"),
+        tag("contain").delimited_by_both(space1),
+        parse_bag_rule.context("rule: contents"),
     )
+    .context("rule")
     .parse(input)
 }
 
@@ -179,7 +175,7 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
 }
 */
 
-use library::dynamic::{execute as solve_dynamic, Subtask, Task, TaskInterrupt};
+use library::dynamic::{Subtask, Task, TaskInterrupt};
 
 struct Day7Solver<'a> {
     rules: Rules<'a>,
@@ -223,5 +219,7 @@ pub fn part2(input: &'static str) -> anyhow::Result<usize> {
     let rules = final_str_parser(parse_all_rules)(input)?;
     let solver = Day7Solver { rules };
 
-    solve_dynamic(SHINY_GOLD, solver, HashMap::new()).context("error solving puzzle")
+    solver
+        .solve_all::<HashMap<_, _>>(SHINY_GOLD)
+        .context("error solving puzzle")
 }
