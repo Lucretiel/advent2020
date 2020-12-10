@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Context;
 use nom::{
     branch::alt,
     bytes::complete::take_until,
@@ -12,9 +11,14 @@ use nom::{
     sequence::{pair, separated_pair, terminated, tuple},
     Err, IResult, Parser,
 };
+
+use anyhow::Context;
 use thiserror::Error;
 
-use crate::library::nom::{final_str_parser, parse_from_str, tag, NomError};
+use crate::library::{
+    self,
+    nom::{final_str_parser, parse_from_str, tag, NomError},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Bag<'a> {
@@ -136,6 +140,7 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
     }
 }
 
+/*
 fn get_total_bag_count<'a>(
     bag: Bag<'a>,
     rules: &Rules<'a>,
@@ -171,4 +176,52 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
     let mut cache: HashMap<Bag, usize> = HashMap::with_capacity(rules.bags.len());
 
     get_total_bag_count(SHINY_GOLD, &rules, &mut cache)
+}
+*/
+
+use library::dynamic::{execute as solve_dynamic, Subtask, Task, TaskInterrupt};
+
+struct Day7Solver<'a> {
+    rules: Rules<'a>,
+}
+
+#[derive(Debug, Error)]
+#[error("error getting count for {bag:?}")]
+struct NoRule<'a> {
+    bag: Bag<'a>,
+}
+
+impl<'a> Task<Bag<'a>, usize, NoRule<'a>> for Day7Solver<'a> {
+    fn solve<'sub, T>(
+        &self,
+        bag: &Bag<'a>,
+        subtasker: &'sub T,
+    ) -> Result<usize, TaskInterrupt<'sub, Bag<'a>, NoRule<'a>>>
+    where
+        T: Subtask<Bag<'a>, usize>,
+    {
+        let rule = self
+            .rules
+            .bags
+            .get(&bag)
+            .ok_or(NoRule { bag: *bag })
+            .map_err(TaskInterrupt::Error)?;
+
+        subtasker.precheck(rule.contents.keys().copied())?;
+
+        let mut count = 0;
+        for (&inner_bag, &num_inner_bags) in &rule.contents {
+            let &inner_count = subtasker.solve(inner_bag)?;
+            count += (1 + inner_count) * num_inner_bags;
+        }
+
+        Ok(count)
+    }
+}
+
+pub fn part2(input: &'static str) -> anyhow::Result<usize> {
+    let rules = final_str_parser(parse_all_rules)(input)?;
+    let solver = Day7Solver { rules };
+
+    solve_dynamic(SHINY_GOLD, solver, HashMap::new()).context("error solving puzzle")
 }

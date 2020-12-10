@@ -105,6 +105,19 @@ pub trait ParserExt<I, O, E>: Parser<I, O, E> + Sized {
             phantom: PhantomData,
         }
     }
+
+    fn delimited_by<L, R, O1, O2>(self, prefix: L, suffix: R) -> Delimited<L, Self, R, O1, O2>
+    where
+        L: Parser<I, O1, E>,
+        R: Parser<I, O2, E>,
+    {
+        Delimited {
+            prefix,
+            suffix,
+            parser: self,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<I, O, E, P> ParserExt<I, O, E> for P where P: Parser<I, O, E> {}
@@ -311,5 +324,28 @@ where
     fn parse(&mut self, input: I) -> nom::IResult<I, O1, E> {
         let (input, _) = self.prefix.parse(input)?;
         self.parser.parse(input)
+    }
+}
+
+pub struct Delimited<L, P, R, O1, O2> {
+    prefix: L,
+    parser: P,
+    suffix: R,
+
+    phantom: PhantomData<(O1, O2)>,
+}
+
+impl<I, O, O1, O2, E, L, P, R> Parser<I, O, E> for Delimited<L, P, R, O1, O2>
+where
+    L: Parser<I, O1, E>,
+    P: Parser<I, O, E>,
+    R: Parser<I, O2, E>,
+{
+    fn parse(&mut self, input: I) -> nom::IResult<I, O, E> {
+        let (input, _) = self.prefix.parse(input)?;
+        let (input, value) = self.parser.parse(input)?;
+        let (input, _) = self.suffix.parse(input)?;
+
+        Ok((input, value))
     }
 }

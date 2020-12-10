@@ -3,6 +3,7 @@
 //! future
 
 mod boolext;
+pub mod dynamic;
 pub mod nom;
 mod parse_items;
 

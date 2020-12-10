@@ -142,14 +142,14 @@ struct Args {
 
 macro_rules! solver_picker {
     ($day:expr, $part:expr, $input:expr; $(
-        $Day:ident, $Part:ident;
+        $Day:ident { $($Part:ident)* }
     )*) => {{
 
         #[allow(unreachable_patterns)]
         match ($day, $part) {
-            $(
-                (SolutionDay::$Day, SolutionPart::$Part) => println!("{}", $Day::$Part($input)?),
-            )*
+            $($(
+                (SolutionDay::$Day, SolutionPart::$Part) => println!("{}", crate::$Day::$Part($input)?),
+            )*)*
             (day, part) => anyhow::bail!("No solution code for {:?}, {:?}", day, part),
         }
     }};
@@ -175,27 +175,22 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    // By leaking the input string, we allow more flexible errors, since error
+    // messages can borrow from the input.
+    let input: &'static str = Box::leak(input.into_boxed_str());
+
     solver_picker! (
         args.day, args.part, &input;
 
-        day1, part1;
-        day1, part2;
-        day2, part1;
-        day2, part2;
-        day3, part1;
-        day3, part2;
-        day4, part1;
-        day4, part2;
-        day5, part1;
-        day5, part2;
-        day6, part1;
-        day6, part2;
-        day7, part1;
-        day7, part2;
-        day8, part1;
-        day8, part2;
-        day9, part1;
-        day9, part2;
+        day1 {part1 part2}
+        day2 {part1 part2}
+        day3 {part1 part2}
+        day4 {part1 part2}
+        day5 {part1 part2}
+        day6 {part1 part2}
+        day7 {part1 part2}
+        day8 {part1 part2}
+        day9 {part1 part2}
     );
 
     Ok(())
