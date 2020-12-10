@@ -46,6 +46,8 @@ impl XmasDecoder {
     }
 }
 
+/// Rather than hardcode our part 1 solution into part 2, we refactor it out
+/// to here so that part 2 can make use of it.
 fn solve_part_1(stream: &[i64]) -> anyhow::Result<i64> {
     let mut stream = stream.iter().copied();
 
@@ -96,6 +98,9 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
                 head += 1;
             }
             Ordering::Greater => {
+                // It shouldn't be possible for this to happen before the tail
+                // advances past the boundary, so we do a regular panic-checked
+                // index here
                 rolling_sum -= stream[tail];
                 tail += 1
             }
