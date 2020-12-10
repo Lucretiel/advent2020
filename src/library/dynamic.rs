@@ -8,7 +8,7 @@ use std::{
     marker::PhantomData,
 };
 
-pub trait SubtaskStore<K, V>: Default {
+pub trait SubtaskStore<K, V> {
     /// Add a new subtask solution to the store. Return the old solution, if
     /// present.
     fn add(&mut self, goal: K, solution: V) -> Option<V>;
@@ -154,6 +154,16 @@ pub fn execute<K: PartialEq, V, E, T: Task<K, V, E>, S: SubtaskStore<K, V>>(
     let mut current_goal = goal;
 
     loop {
+        // NOTE: We could check if the current_goal is already in the store,
+        // but it should be impossible for that to be the case at this point,
+        // since the only way to add things to the store is with a Dependency,
+        // and the only way to get a Dependency is if the store reports that
+        // it *doesn't* already contain that solution.
+        //
+        // This means that the only time this could happen is if the store
+        // contains the solution for the *original* goal, which we assume
+        // doesn't happen.
+
         match task.solve(&current_goal, &subtasker) {
             Ok(solution) => match dependency_stack.pop() {
                 None => break Ok(solution),
