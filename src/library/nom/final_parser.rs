@@ -1,12 +1,8 @@
 use std::fmt::{self, Display, Formatter};
 
-use nom::{
-    combinator::{all_consuming, complete},
-    error::ParseError,
-    Err as NomErr, InputLength, Offset, Parser,
-};
+use nom::{error::ParseError, Err as NomErr, InputLength, Offset, Parser};
 
-use super::NomError;
+use super::{NomError, ParserExt};
 
 /// Trait for recombining error information with the original input.
 ///
@@ -130,7 +126,7 @@ where
     E: ParseError<I> + ExtractContext<I, E2>,
     I: InputLength + Clone,
 {
-    let mut parser = all_consuming(complete(parser));
+    let mut parser = parser.complete().all_consuming();
 
     move |input| match parser.parse(input.clone()) {
         Ok((_, parsed)) => Ok(parsed),

@@ -117,7 +117,7 @@ where
                 // We found neither the terminator nor the separator we were
                 // expecting. This is therefore an alternation error
                 Err(NomErr::Error(err)) => {
-                    break Err(NomErr::Failure(E::append(
+                    break Err(NomErr::Error(E::append(
                         input.clone(),
                         ErrorKind::Many1,
                         E::or(err, terminator_err),

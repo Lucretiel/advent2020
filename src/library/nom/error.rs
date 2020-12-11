@@ -43,7 +43,7 @@ pub enum NomError<I> {
 
     /// A stack indicates a chain of error contexts. The stack should be read
     /// "backwards"; that is, errors *earlier* in the Vec occurred "sooner"
-    /// (deeper in the call stack)
+    /// (deeper in the call stack).
     Stack(Vec<Self>),
 
     /// All of the errors in this set are "siblings"
@@ -88,7 +88,7 @@ impl<I: Display> Display for NomError<I> {
             NomError::Stack(stack) => {
                 writeln!(f, "trace:")?;
                 let mut f = IndentWriter::new("  ", f);
-                write!(f, "{}", stack.iter().join_with(",\n"))
+                write!(f, "{}", stack.iter().rev().join_with(",\n"))
             }
             NomError::Alt(siblings) => {
                 writeln!(f, "one of:")?;
