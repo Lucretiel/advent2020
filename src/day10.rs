@@ -90,33 +90,46 @@ struct Part2Solver {
 }
 
 impl Task<Part2Goal, i64, Infallible> for Part2Solver {
+    type State = i64;
+
     fn solve<'sub, T>(
         &self,
         goal: &Part2Goal,
         subtasker: &'sub T,
+        state: &mut Option<i64>,
     ) -> Result<i64, TaskInterrupt<'sub, Part2Goal, Infallible>>
     where
         T: Subtask<Part2Goal, i64>,
     {
-        let next_highest = self
-            .joltages
-            .range((Bound::Excluded(goal.joltage), Bound::Unbounded))
-            .next()
-            .copied();
-
-        let next_highest = match next_highest {
-            None => {
-                return match goal.present {
-                    true => Ok(1),
-                    false => Ok(0),
-                }
-            }
+        let next_highest = match *state {
             Some(next_highest) => next_highest,
-        };
+            None => {
+                let next_highest = self
+                    .joltages
+                    .range((Bound::Excluded(goal.joltage), Bound::Unbounded))
+                    .next()
+                    .copied();
 
-        if !goal.present && next_highest - goal.prev > 3 {
-            return Ok(0);
-        }
+                let next_highest = match next_highest {
+                    None => {
+                        return match goal.present {
+                            true => Ok(1),
+                            false => Ok(0),
+                        }
+                    }
+                    Some(next_highest) => next_highest,
+                };
+
+                if !goal.present && next_highest - goal.prev > 3 {
+                    return Ok(0);
+                }
+
+                // At this point, we know we're solving subtasks, so save the
+                // state so that we can jump back to this point later
+                *state = Some(next_highest);
+                next_highest
+            }
+        };
 
         let (next_present, next_absent) = goal.next_highest(next_highest);
         let &num_arrangements_next_present = subtasker.solve(next_present)?;

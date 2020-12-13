@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::Context;
 use nom::{
     bytes::complete::take_until,
     character::complete::{char, digit1, multispace1, space0, space1},
@@ -7,14 +8,17 @@ use nom::{
     sequence::separated_pair,
     Err, IResult, Parser,
 };
-
-use anyhow::Context;
+use nom_supreme::{
+    error::ErrorTree,
+    final_parser::{final_parser, Location},
+    multi::parse_separated_terminated,
+    parse_from_str,
+    parser_ext::ParserExt,
+    tag::complete::tag,
+};
 use thiserror::Error;
 
-use crate::library::{
-    self,
-    nom::{final_str_parser, parse_from_str, parse_separated_terminated, tag, NomError, ParserExt},
-};
+use crate::library::{self, dynamic::StatelessTask};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Bag<'a> {
@@ -22,7 +26,7 @@ struct Bag<'a> {
 }
 
 /// Parse a string like "red bag" or "light green bags"
-fn parse_bag(input: &str) -> IResult<&str, Bag, NomError<&str>> {
+fn parse_bag(input: &str) -> IResult<&str, Bag, ErrorTree<&str>> {
     take_until("bag")
         .terminated(tag("bags").or(tag("bag")))
         .map(|s: &str| s.trim_end())
@@ -37,14 +41,14 @@ struct BagRule<'a> {
 }
 
 /// Parse a string like "1 red bag"
-fn parse_counted_bag(input: &str) -> IResult<&str, (usize, Bag), NomError<&str>> {
+fn parse_counted_bag(input: &str) -> IResult<&str, (usize, Bag), ErrorTree<&str>> {
     separated_pair(parse_from_str(digit1), space1, parse_bag)
         .context("bag count")
         .parse(input)
 }
 
 /// Parse a string like "1 red bag, 2 green bags.", or a string like "no other bags."
-fn parse_bag_rule(input: &str) -> IResult<&str, BagRule, NomError<&str>> {
+fn parse_bag_rule(input: &str) -> IResult<&str, BagRule, ErrorTree<&str>> {
     parse_separated_terminated(
         parse_counted_bag,
         char(',').terminated(space0),
@@ -62,7 +66,7 @@ fn parse_bag_rule(input: &str) -> IResult<&str, BagRule, NomError<&str>> {
 }
 
 /// Parse a string like "red bags contain 2 blue bags, 1 green bag."
-fn parse_bag_with_rule(input: &str) -> IResult<&str, (Bag, BagRule), NomError<&str>> {
+fn parse_bag_with_rule(input: &str) -> IResult<&str, (Bag, BagRule), ErrorTree<&str>> {
     separated_pair(
         parse_bag.context("rule: target"),
         tag("contain").delimited_by_both(space1),
@@ -83,14 +87,14 @@ struct DuplicateBagError {
     bag_name: String,
 }
 
-fn parse_all_rules(mut input: &str) -> IResult<&str, Rules, NomError<&str>> {
+fn parse_all_rules(mut input: &str) -> IResult<&str, Rules, ErrorTree<&str>> {
     let mut rules = Rules::default();
 
     while !input.is_empty() {
         let (tail, (bag, rule)) = parse_bag_with_rule(input)?;
 
         if rules.bags.insert(bag, rule).is_some() {
-            return Err(Err::Error(NomError::from_external_error(
+            return Err(Err::Error(ErrorTree::from_external_error(
                 input,
                 ErrorKind::Many0,
                 DuplicateBagError {
@@ -105,10 +109,14 @@ fn parse_all_rules(mut input: &str) -> IResult<&str, Rules, NomError<&str>> {
     Ok((input, rules))
 }
 
+fn final_parse_all_rules(input: &str) -> Result<Rules, ErrorTree<Location>> {
+    final_parser(parse_all_rules)(input)
+}
+
 const SHINY_GOLD: Bag = Bag { name: "shiny gold" };
 
 pub fn part1(input: &str) -> anyhow::Result<usize> {
-    let rules = final_str_parser(parse_all_rules)(input)?;
+    let rules = final_parse_all_rules(input)?;
 
     // Set of bags from which "shiny gold" is reachable
     let mut bags: HashSet<Bag> = HashSet::default();
@@ -174,7 +182,7 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
 }
 */
 
-use library::dynamic::{Subtask, Task, TaskInterrupt};
+use library::dynamic::{execute, Subtask, TaskInterrupt};
 
 struct Day7Solver<'a> {
     rules: Rules<'a>,
@@ -186,7 +194,7 @@ struct NoRule<'a> {
     bag: Bag<'a>,
 }
 
-impl<'a> Task<Bag<'a>, usize, NoRule<'a>> for Day7Solver<'a> {
+impl<'a> StatelessTask<Bag<'a>, usize, NoRule<'a>> for Day7Solver<'a> {
     fn solve<'sub, T>(
         &self,
         bag: &Bag<'a>,
@@ -215,10 +223,8 @@ impl<'a> Task<Bag<'a>, usize, NoRule<'a>> for Day7Solver<'a> {
 }
 
 pub fn part2(input: &'static str) -> anyhow::Result<usize> {
-    let rules = final_str_parser(parse_all_rules)(input)?;
+    let rules = final_parse_all_rules(input)?;
     let solver = Day7Solver { rules };
 
-    solver
-        .solve_all::<HashMap<_, _>>(SHINY_GOLD)
-        .context("error solving puzzle")
+    execute(SHINY_GOLD, &solver, HashMap::new()).context("error solving puzzle")
 }

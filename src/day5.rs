@@ -147,7 +147,7 @@ pub fn part2(input: &str) -> anyhow::Result<i32> {
         .collect();
     let mut seat_ids = seat_ids?;
 
-    seat_ids.sort();
+    seat_ids.sort_unstable();
     seat_ids
         .windows(2)
         .find_map(|window| {

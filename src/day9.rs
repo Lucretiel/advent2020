@@ -48,8 +48,7 @@ impl XmasDecoder {
                     .copied()
                     .map(move |value2| value1 + value2)
             })
-            .find(|&sum| sum == target)
-            .is_some();
+            .any(|sum| sum == target);
 
         if success {
             self.preamble.pop_front();

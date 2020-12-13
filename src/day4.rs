@@ -111,7 +111,7 @@ fn check_height(height: &str) -> Option<()> {
 
 impl PartialDocument<'_> {
     fn is_mostly_valid(&self) -> bool {
-        if let PartialDocument {
+        matches!(self, PartialDocument {
             birth_year: Some(..),
             issue_year: Some(..),
             expiration_year: Some(..),
@@ -120,12 +120,7 @@ impl PartialDocument<'_> {
             eye_color: Some(..),
             passport_id: Some(..),
             ..
-        } = self
-        {
-            true
-        } else {
-            false
-        }
+        })
     }
 
     /*

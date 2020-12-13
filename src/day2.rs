@@ -1,5 +1,4 @@
-use std::convert::TryInto;
-
+use anyhow::Context;
 use nom::{
     character::complete::multispace1,
     character::complete::space0,
@@ -9,10 +8,9 @@ use nom::{
     sequence::{pair, separated_pair, terminated},
     IResult, Parser,
 };
+use nom_supreme::parse_from_str;
 
-use anyhow::Context;
-
-use crate::library::{nom::parse_from_str, BoolExt};
+use crate::library::BoolExt;
 
 fn parse_number(input: &str) -> IResult<&str, usize> {
     parse_from_str(digit1).parse(input)
@@ -50,8 +48,7 @@ fn char_at(input: &str, index: usize) -> Option<char> {
 impl Policy {
     fn check(&self, password: &str) -> bool {
         let count = password.chars().filter(|&c| c == self.character).count();
-        self.range
-            .in_range(count.try_into().expect("Overflowed a u32"))
+        self.range.in_range(count)
     }
 
     fn check_version_2(&self, password: &str) -> bool {

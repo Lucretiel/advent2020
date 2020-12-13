@@ -3,24 +3,31 @@
 //! got the right answer, I'm still reimplementing it here with a strict parser
 //! instead of a validator.
 
+use std::num::ParseIntError;
+
 use nom::{
     branch::alt,
     bytes::complete::{is_not, take_while_m_n},
     character::complete::{char, digit1, multispace1},
     combinator::{all_consuming, eof, map_opt, map_res, value, verify},
-    error::ParseError,
+    error::{FromExternalError, ParseError},
     multi::fold_many0,
-    sequence::{pair, preceded, terminated, tuple},
+    sequence::{preceded, terminated, tuple},
     IResult, Parser,
 };
-
-use crate::library::nom::{final_str_parser, parse_from_str, tag, Location, NomError, TagError};
+use nom_supreme::{
+    error::ErrorTree,
+    final_parser::{final_parser, Location},
+    parse_from_str,
+    parser_ext::ParserExt,
+    tag::{complete::tag, TagError},
+};
 
 fn passport_field<'a, E>(label: &'static str) -> impl Parser<&'a str, &'a str, E>
 where
-    E: ParseError<&'a str> + TagError<&'static str, &'a str>,
+    E: ParseError<&'a str> + TagError<&'a str, &'static str>,
 {
-    preceded(pair(tag(label), char(':')), is_not(" \t\n\r"))
+    tag(label).terminated(char(':')).precedes(is_not(" \t\n\r"))
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -29,10 +36,22 @@ enum Height {
     In(u32),
 }
 
-fn parse_height(input: &str) -> IResult<&str, Height, NomError<&str>> {
+fn parse_height_unit<'a, E>(
+    unit: &'static str,
+    variant: impl Fn(u32) -> Height,
+) -> impl Parser<&'a str, Height, E>
+where
+    E: ParseError<&'a str>
+        + TagError<&'a str, &'static str>
+        + FromExternalError<&'a str, ParseIntError>,
+{
+    parse_from_str(digit1).terminated(tag(unit)).map(variant)
+}
+
+fn parse_height(input: &str) -> IResult<&str, Height, ErrorTree<&str>> {
     alt((
-        terminated(parse_from_str(digit1), tag("cm")).map(Height::Cm),
-        terminated(parse_from_str(digit1), tag("in")).map(Height::In),
+        parse_height_unit("cm", Height::Cm),
+        parse_height_unit("in", Height::In),
     ))(input)
 }
 
@@ -43,7 +62,7 @@ struct Color {
     blue: u8,
 }
 
-fn parse_hex_u8(input: &str) -> IResult<&str, u8, NomError<&str>> {
+fn parse_hex_u8(input: &str) -> IResult<&str, u8, ErrorTree<&str>> {
     map_res(
         take_while_m_n(2, 2, |c: char| {
             c.is_ascii_hexdigit() && !c.is_ascii_uppercase()
@@ -52,7 +71,7 @@ fn parse_hex_u8(input: &str) -> IResult<&str, u8, NomError<&str>> {
     )(input)
 }
 
-fn parse_color(input: &str) -> IResult<&str, Color, NomError<&str>> {
+fn parse_color(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
     preceded(char('#'), tuple((parse_hex_u8, parse_hex_u8, parse_hex_u8)))
         .map(|(red, green, blue)| Color { red, green, blue })
         .parse(input)
@@ -69,7 +88,7 @@ enum EyeColor {
     Other,
 }
 
-fn parse_eye_color(input: &str) -> IResult<&str, EyeColor, NomError<&str>> {
+fn parse_eye_color(input: &str) -> IResult<&str, EyeColor, ErrorTree<&str>> {
     alt((
         value(EyeColor::Amber, tag("amb")),
         value(EyeColor::Blue, tag("blu")),
@@ -84,7 +103,7 @@ fn parse_eye_color(input: &str) -> IResult<&str, EyeColor, NomError<&str>> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct PassportId(u32);
 
-fn parse_passport_id(input: &str) -> IResult<&str, PassportId, NomError<&str>> {
+fn parse_passport_id(input: &str) -> IResult<&str, PassportId, ErrorTree<&str>> {
     parse_from_str(verify(digit1, |d: &str| d.len() == 9))
         .map(PassportId)
         .parse(input)
@@ -102,7 +121,7 @@ enum Field {
     CountryId(()),
 }
 
-fn parse_field(input: &str) -> IResult<&str, Field, NomError<&str>> {
+fn parse_field<'a>(input: &'a str) -> IResult<&'a str, Field, ErrorTree<&'a str>> {
     alt((
         parse_from_str(verify(passport_field("byr"), |s: &str| s.len() == 4)).map(Field::BirthYear),
         parse_from_str(verify(passport_field("iyr"), |s: &str| s.len() == 4)).map(Field::IssueYear),
@@ -178,8 +197,8 @@ struct Document {
     passport_id: PassportId,
 }
 
-fn parse_document(input: &str) -> Result<Document, NomError<Location>> {
-    final_str_parser(map_opt(
+fn parse_document(input: &str) -> Result<Document, ErrorTree<Location>> {
+    final_parser(map_opt(
         fold_many0(
             terminated(parse_field, alt((multispace1, eof))),
             PartialDocument::default(),

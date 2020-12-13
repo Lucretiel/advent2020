@@ -2,6 +2,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
+    convert::Infallible,
     error::Error,
     fmt::{self, Debug, Display, Formatter},
     hash::{BuildHasher, Hash},
@@ -72,20 +73,45 @@ impl<'a, K, E> From<Dependency<'a, K>> for TaskInterrupt<'a, K, E> {
 
 pub trait Subtask<K, V> {
     fn precheck(&self, goals: impl IntoIterator<Item = K>) -> Result<(), Dependency<K>>;
-    fn solve<'a>(&self, goal: K) -> Result<&V, Dependency<K>>;
+    fn solve(&self, goal: K) -> Result<&V, Dependency<K>>;
 }
 
 pub trait Task<K, V, E> {
+    type State;
+
+    fn solve<'sub, T>(
+        &self,
+        goal: &K,
+        subtasker: &'sub T,
+        state: &mut Option<Self::State>,
+    ) -> Result<V, TaskInterrupt<'sub, K, E>>
+    where
+        T: Subtask<K, V>;
+}
+
+pub trait StatelessTask<K, V, E> {
     fn solve<'sub, T>(&self, goal: &K, subtasker: &'sub T) -> Result<V, TaskInterrupt<'sub, K, E>>
     where
         T: Subtask<K, V>;
+}
 
-    fn solve_all<S: SubtaskStore<K, V> + Default>(&self, goal: K) -> Result<V, DynamicError<K, E>>
+impl<K, V, E, S> Task<K, V, E> for S
+where
+    S: StatelessTask<K, V, E>,
+{
+    type State = Infallible;
+
+    #[inline(always)]
+    fn solve<'sub, T>(
+        &self,
+        goal: &K,
+        subtasker: &'sub T,
+        _state: &mut Option<Infallible>,
+    ) -> Result<V, TaskInterrupt<'sub, K, E>>
     where
-        Self: Sized,
-        K: PartialEq,
+        T: Subtask<K, V>,
     {
-        execute(goal, self, S::default())
+        StatelessTask::solve(self, goal, subtasker)
     }
 }
 
@@ -147,6 +173,8 @@ where
     }
 }
 
+// TODO: Add an algorithm for state preservation when retrying tasks
+
 /// Solve a dynamic algorithm.
 ///
 /// This will run task.solve(&goal, subtasker). The task can request subgoal
@@ -173,6 +201,7 @@ pub fn execute<K: PartialEq, V, E, T: Task<K, V, E>, S: SubtaskStore<K, V>>(
     // TODO: use an ordered hash map for faster circular checks
     let mut dependency_stack = vec![];
     let mut current_goal = goal;
+    let mut current_state = None;
 
     loop {
         // NOTE: We could check if the current_goal is already in the store,
@@ -185,20 +214,24 @@ pub fn execute<K: PartialEq, V, E, T: Task<K, V, E>, S: SubtaskStore<K, V>>(
         // contains the solution for the *original* goal, which we assume
         // doesn't happen.
 
-        match task.solve(&current_goal, &subtasker) {
+        match task.solve(&current_goal, &subtasker, &mut current_state) {
             Ok(solution) => match dependency_stack.pop() {
                 None => break Ok(solution),
-                Some(dependent_goal) => {
+                Some((dependent_goal, state)) => {
                     subtasker.store.add(current_goal, solution);
                     current_goal = dependent_goal;
+                    current_state = state;
                 }
             },
             Err(TaskInterrupt::Error(err)) => break Err(DynamicError::Error(err)),
             Err(TaskInterrupt::Dependency(Dependency { key: subgoal, .. })) => {
-                dependency_stack.push(current_goal);
-                match dependency_stack.contains(&subgoal) {
+                dependency_stack.push((current_goal, current_state));
+                match dependency_stack.iter().any(|(goal, ..)| *goal == subgoal) {
                     true => break Err(DynamicError::CircularDependency(subgoal)),
-                    false => current_goal = subgoal,
+                    false => {
+                        current_goal = subgoal;
+                        current_state = Default::default();
+                    }
                 }
             }
         }

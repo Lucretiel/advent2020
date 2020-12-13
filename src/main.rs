@@ -4,6 +4,7 @@ mod library;
 
 mod day1;
 mod day10;
+mod day11;
 mod day2;
 mod day3;
 mod day4;
@@ -143,7 +144,7 @@ struct Args {
 
 macro_rules! solver_picker {
     ($day:expr, $part:expr, $input:expr; $(
-        $Day:ident { $($Part:ident)* }
+        $Day:ident { $($Part:ident $(,)?)* }
     )*) => {{
 
         #[allow(unreachable_patterns)]
@@ -193,6 +194,7 @@ fn main() -> anyhow::Result<()> {
         day8 {part1 part2}
         day9 {part1 part2}
         day10 {part1 part2}
+        day11 {part1 part2}
     );
 
     Ok(())
