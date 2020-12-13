@@ -29,17 +29,14 @@ fn parse_direction(input: &str) -> IResult<&str, Direction, ErrorTree<&str>> {
 }
 
 fn parse_rotation(input: &str) -> IResult<&str, Rotation, ErrorTree<&str>> {
-    alt((
-        char('L').value(Rotation::Anticlockwise),
-        char('R').value(Rotation::Clockwise),
-    ))
-    .and(alt((
-        tag("90").value(1),
-        tag("180").value(2),
-        tag("270").value(3),
-    )))
-    .map(|(rot, amount)| rot * amount)
-    .parse(input)
+    alt((char('L').value(Anticlockwise), char('R').value(Clockwise)))
+        .and(alt((
+            tag("90").value(1),
+            tag("180").value(2),
+            tag("270").value(3),
+        )))
+        .map(|(rot, amount)| rot * amount)
+        .parse(input)
 }
 
 fn parse_instruction(input: &str) -> IResult<&str, Instruction, ErrorTree<&str>> {
