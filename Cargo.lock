@@ -274,9 +274,9 @@ dependencies = [
 
 [[package]]
 name = "nom-supreme"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50ddaa6336429ef062c933609a1e83e745631173e40cf8b4f4643ffd4d8c258a"
+checksum = "32a3f4328b69d814e8890b408b7c100f0ad200100820da4d10c7d8bf2060ab1d"
 dependencies = [
  "cascade",
  "indent_write",

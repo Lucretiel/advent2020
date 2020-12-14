@@ -2,7 +2,7 @@ use anyhow::Context;
 use gridly::prelude::*;
 use nom::{
     branch::alt,
-    character::complete::{char, digit1, multispace0},
+    character::complete::{char, digit1, multispace0, multispace1},
     IResult, Parser,
 };
 use nom_supreme::{
@@ -25,6 +25,7 @@ fn parse_direction(input: &str) -> IResult<&str, Direction, ErrorTree<&str>> {
         char('W').value(Left),
         char('E').value(Right),
     ))
+    .context("direction")
     .parse(input)
 }
 
@@ -36,6 +37,7 @@ fn parse_rotation(input: &str) -> IResult<&str, Rotation, ErrorTree<&str>> {
             tag("270").value(3),
         )))
         .map(|(rot, amount)| rot * amount)
+        .context("rotation")
         .parse(input)
 }
 
@@ -44,14 +46,17 @@ fn parse_instruction(input: &str) -> IResult<&str, Instruction, ErrorTree<&str>>
         // Parse an absolute direction (N, E, S, W) and a magnitude
         parse_direction
             .and(parse_from_str(digit1))
-            .map(|(direction, distance)| AbsoluteMove(direction, distance)),
+            .map(|(direction, distance)| AbsoluteMove(direction, distance))
+            .context("absolute movement"),
         // Parse a rotation
         parse_rotation.map(Turn),
         // Parse "F" and a magnitude
         parse_from_str(digit1)
             .preceded_by(char('F'))
-            .map(MoveForward),
+            .map(MoveForward)
+            .context("relative movement"),
     ))
+    .context("instruction")
     .parse(input)
 }
 
@@ -88,13 +93,16 @@ fn execute_ship<T: ApplyInstruction + Clone>(
     ship: T,
     input: &str,
 ) -> Result<T, ErrorTree<nom_supreme::final_parser::Location>> {
-    final_parser(parse_separated_terminated(
-        parse_instruction,
-        multispace0,
-        multispace0.all_consuming(),
-        || ship.clone(),
-        T::apply_instruction,
-    ))(input)
+    final_parser(
+        parse_separated_terminated(
+            parse_instruction,
+            multispace1,
+            multispace0.all_consuming(),
+            || ship.clone(),
+            T::apply_instruction,
+        )
+        .context("instruction list"),
+    )(input)
 }
 
 pub fn part1(input: &str) -> anyhow::Result<isize> {
