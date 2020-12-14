@@ -102,8 +102,11 @@ impl Task<Part2Goal, i64, Infallible> for Part2Solver {
         T: Subtask<Part2Goal, i64>,
     {
         let next_highest = match *state {
-            Some(next_highest) => next_highest,
             None => {
+                if goal.joltage - goal.prev > 3 {
+                    return Ok(0);
+                }
+
                 let next_highest = self
                     .joltages
                     .range((Bound::Excluded(goal.joltage), Bound::Unbounded))
@@ -120,15 +123,10 @@ impl Task<Part2Goal, i64, Infallible> for Part2Solver {
                     Some(next_highest) => next_highest,
                 };
 
-                if !goal.present && next_highest - goal.prev > 3 {
-                    return Ok(0);
-                }
-
-                // At this point, we know we're solving subtasks, so save the
-                // state so that we can jump back to this point later
                 *state = Some(next_highest);
                 next_highest
             }
+            Some(next_highest) => next_highest,
         };
 
         let (next_present, next_absent) = goal.next_highest(next_highest);
