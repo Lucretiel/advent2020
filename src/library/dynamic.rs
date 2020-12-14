@@ -63,6 +63,9 @@ pub struct Dependency<'a, K> {
 pub enum TaskInterrupt<'a, K, E> {
     Dependency(Dependency<'a, K>),
     Error(E),
+    // TODO: Add another Interrupt type, Tail, representing that a task's
+    // solution is precisely the same as a particular subtask, and therefore
+    // we don't need to add a frame to the dependency stack
 }
 
 impl<'a, K, E> From<Dependency<'a, K>> for TaskInterrupt<'a, K, E> {

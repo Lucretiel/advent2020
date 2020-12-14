@@ -120,22 +120,15 @@ pub fn part1(input: &str) -> anyhow::Result<isize> {
 #[derive(Debug, Clone)]
 struct Ship2 {
     location: Location,
-    waypoint: Location,
+    waypoint: Vector,
 }
 
 impl Default for Ship2 {
     fn default() -> Self {
         Ship2 {
             location: Location::zero(),
-            waypoint: Location::zero() + Vector::rightward(10) + Up,
+            waypoint: Vector::rightward(10) + Up,
         }
-    }
-}
-
-impl Ship2 {
-    /// Get a vector from the current location to the current waypoint
-    fn to_waypoint(&self) -> Vector {
-        self.waypoint - self.location
     }
 }
 
@@ -143,18 +136,15 @@ impl ApplyInstruction for Ship2 {
     fn apply_instruction(self, instruction: Instruction) -> Self {
         match instruction {
             AbsoluteMove(direction, distance) => Self {
-                waypoint: self.waypoint.relative(direction, distance),
+                waypoint: self.waypoint + (direction * distance),
                 ..self
             },
-            MoveForward(distance) => {
-                let movement = self.to_waypoint() * distance;
-                Self {
-                    location: self.location + movement,
-                    waypoint: self.waypoint + movement,
-                }
-            }
+            MoveForward(distance) => Self {
+                location: self.location + (self.waypoint * distance),
+                ..self
+            },
             Turn(rotation) => Self {
-                waypoint: self.location + self.to_waypoint().rotate(rotation),
+                waypoint: self.waypoint.rotate(rotation),
                 ..self
             },
         }
