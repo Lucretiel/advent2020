@@ -7,6 +7,7 @@ mod day10;
 mod day11;
 mod day12;
 mod day13;
+mod day14;
 mod day2;
 mod day3;
 mod day4;
@@ -33,7 +34,7 @@ pub enum SolutionDayError {
     #[error("Failed to parse day: {0}")]
     Parse(#[from] ParseIntError),
 
-    #[error("{0} is not an Adevent Puzzle Day")]
+    #[error("{0} is not an Advent Puzzle Day")]
     BadDay(u8),
 }
 
@@ -154,7 +155,7 @@ macro_rules! solver_picker {
             $($(
                 (SolutionDay::$Day, SolutionPart::$Part) => println!("{}", crate::$Day::$Part($input)?),
             )*)*
-            (day, part) => anyhow::bail!("No solution code for {:?}, {:?}", day, part),
+            (day, part) => anyhow::bail!("No written solution for {:?}, {:?}", day, part),
         }
     }};
 }
@@ -199,6 +200,7 @@ fn main() -> anyhow::Result<()> {
         day11 {part1 part2}
         day12 {part1 part2}
         day13 {part1 part2}
+        day14 {part1 part2}
     );
 
     Ok(())
