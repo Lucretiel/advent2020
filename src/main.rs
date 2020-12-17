@@ -154,9 +154,12 @@ macro_rules! solver_picker {
         #[allow(unreachable_patterns)]
         match ($day, $part) {
             $($(
-                (SolutionDay::$Day, SolutionPart::$Part) => println!("{}", crate::$Day::$Part($input)?),
+                (day @ SolutionDay::$Day, part @ SolutionPart::$Part) =>
+                    println!("{}", crate::$Day::$Part($input)
+                        .with_context(|| format!("Failed to solve {:?}, {:?}", day, part))?
+                    ),
             )*)*
-            (day, part) => anyhow::bail!("No written solution for {:?}, {:?}", day, part),
+            (day, part) => anyhow::bail!("{:?}, {:?} does not have solution code; did you switch debug/release mode?", day, part),
         }
     }};
 }
