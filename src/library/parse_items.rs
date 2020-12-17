@@ -7,9 +7,10 @@ use thiserror::Error;
 /// Error from `parse_items`. Contains the parse error as well as the index
 /// of the failed parse.
 #[derive(Debug, Clone, Error)]
-#[error("error parsing item at index {index}")]
+#[error("error parsing item {input:?} at index {index}")]
 pub struct ParseItemsError<E: Error + 'static> {
     index: usize,
+    input: String,
 
     #[source]
     error: E,
@@ -52,9 +53,11 @@ where
         .into_iter()
         .enumerate()
         .map(|(index, value)| {
-            value
-                .parse()
-                .map_err(|error| ParseItemsError { index, error })
+            value.parse().map_err(|error| ParseItemsError {
+                index,
+                error,
+                input: value.to_owned(),
+            })
         })
         .collect()
 }
