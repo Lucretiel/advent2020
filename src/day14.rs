@@ -1,3 +1,6 @@
+#![allow(renamed_and_removed_lints)]
+#![allow(unusual_byte_groupings)]
+
 use std::collections::HashMap;
 
 use anyhow::Context;
@@ -88,10 +91,14 @@ fn test_parse_mask() {
     let (tail, mask) = parse_mask(input).expect("Error parsing mask");
 
     assert_eq!(tail, "");
+
     assert_eq!(
         mask,
         Mask {
+            #[allow(unusual_byte_groupings)]
             mask: 0b111111_111111_111111_111111_000000_001100,
+
+            #[allow(unusual_byte_groupings)]
             setting: 0b000000_000000_000000_000000_010101_010001,
         }
     );

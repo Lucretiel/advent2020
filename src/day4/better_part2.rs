@@ -121,7 +121,7 @@ enum Field {
     CountryId(()),
 }
 
-fn parse_field<'a>(input: &'a str) -> IResult<&'a str, Field, ErrorTree<&'a str>> {
+fn parse_field(input: &str) -> IResult<&str, Field, ErrorTree<&str>> {
     alt((
         parse_from_str(verify(passport_field("byr"), |s: &str| s.len() == 4)).map(Field::BirthYear),
         parse_from_str(verify(passport_field("iyr"), |s: &str| s.len() == 4)).map(Field::IssueYear),

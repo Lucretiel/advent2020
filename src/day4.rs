@@ -37,7 +37,7 @@ enum Field<'a> {
     CountryId(&'a str),
 }
 
-fn parse_field<'a>(input: &'a str) -> IResult<&'a str, Field<'a>> {
+fn parse_field(input: &str) -> IResult<&str, Field> {
     alt((
         passport_field("byr").map(Field::BirthYear),
         passport_field("iyr").map(Field::IssueYear),
@@ -111,16 +111,19 @@ fn check_height(height: &str) -> Option<()> {
 
 impl PartialDocument<'_> {
     fn is_mostly_valid(&self) -> bool {
-        matches!(self, PartialDocument {
-            birth_year: Some(..),
-            issue_year: Some(..),
-            expiration_year: Some(..),
-            height: Some(..),
-            hair_color: Some(..),
-            eye_color: Some(..),
-            passport_id: Some(..),
-            ..
-        })
+        matches!(
+            self,
+            PartialDocument {
+                birth_year: Some(..),
+                issue_year: Some(..),
+                expiration_year: Some(..),
+                height: Some(..),
+                hair_color: Some(..),
+                eye_color: Some(..),
+                passport_id: Some(..),
+                ..
+            }
+        )
     }
 
     /*
@@ -141,7 +144,7 @@ impl PartialDocument<'_> {
     */
 }
 
-fn parse_document<'a>(input: &'a str) -> IResult<&'a str, PartialDocument<'a>> {
+fn parse_document(input: &str) -> IResult<&str, PartialDocument> {
     let parse_field = terminated(parse_field, opt(one_of(" \n")));
 
     fold_many0(
