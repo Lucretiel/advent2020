@@ -2,7 +2,7 @@ use anyhow::Context;
 use nom::{
     branch::alt,
     character::complete::{char, digit1, multispace0},
-    combinator::{eof, peek},
+    combinator::{eof, not, peek},
     error::ParseError,
     Err, IResult, Parser,
 };
@@ -35,14 +35,13 @@ fn parse_operator(input: &str) -> IResult<&str, Operator, ErrorTree<&str>> {
         char('+').value(Operator::Plus),
         char('*').value(Operator::Times),
     ))
-    .terminated(multispace0)
     .context("operator")
     .parse(input)
 }
 
 /// Parse a single number like 25
 fn parse_number(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
-    parse_from_str(digit1).terminated(multispace0).parse(input)
+    parse_from_str(digit1).parse(input)
 }
 
 /// Parse a single number or a parenthesized expression
@@ -58,7 +57,7 @@ fn parse_parenthesized<'a>(
 ) -> impl Parser<&'a str, i64, ErrorTree<&'a str>> {
     expression
         .preceded_by(char('(').terminated(multispace0))
-        .terminated(char(')').terminated(multispace0))
+        .terminated(char(')').preceded_by(multispace0))
         .context("parenthesized expression")
 }
 
@@ -68,61 +67,45 @@ fn peek_item(input: &str) -> IResult<&str, (), ErrorTree<&str>> {
 }
 
 fn parse_generic_expression<'a, O, T>(
-    mut item: impl Parser<&'a str, i64, ErrorTree<&'a str>>,
-    operator: impl Parser<&'a str, O, ErrorTree<&'a str>> + Clone,
-    terminator: impl Parser<&'a str, T, ErrorTree<&'a str>>,
-    apply: impl Fn(O, i64, i64) -> i64,
-) -> impl Parser<&'a str, i64, ErrorTree<&'a str>> {
-    let mut terminator = peek(terminator);
-
-    (move |input| {
-        let (mut input, mut value) = (|input| item.parse(input))
-            .context("expression head")
-            .parse(input)?;
-
-        let mut parse_tail_item = operator
-            .clone()
-            .and(|input| item.parse(input))
-            .context("expression tail item");
+    mut item: impl Parser<&'a str, T, ErrorTree<&'a str>>,
+    operator: impl Parser<&'a str, O, ErrorTree<&'a str>>,
+    apply: impl Fn(O, T, T) -> T,
+) -> impl Parser<&'a str, T, ErrorTree<&'a str>> {
+    let mut operator = operator
+        .delimited_by_both(multispace0)
+        .context("expression operator");
+    move |input| {
+        let (mut input, mut value) = item.parse(input)?;
 
         loop {
-            let terminator_err = match terminator.parse(input) {
-                Ok((input, _)) => return Ok((input, value)),
-                Err(Err::Error(err)) => err,
-                Err(err) => return Err(err),
-            };
-
-            let (tail, (op, item)) = match parse_tail_item.parse(input) {
+            let (tail, op) = match operator.parse(input) {
                 Ok(result) => result,
-                Err(Err::Error(err)) => return Err(Err::Error(err.or(terminator_err))),
+                Err(Err::Error(..)) => break Ok((input, value)),
                 Err(err) => return Err(err),
             };
 
             input = tail;
+
+            let (tail, item) = item.parse(input)?;
+
+            input = tail;
             value = apply(op, value, item);
         }
-    })
-    .context("expression")
+    }
 }
 
 fn parse_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
-    // An expression is terminated by ) or ( or eof or a number
-    let terminator = alt((char(')').value(()), peek_item, eof.value(())));
-
-    parse_generic_expression(
-        parse_item(parse_expression),
-        parse_operator,
-        terminator,
-        |op, x, y| op.apply(x, y),
-    )
+    parse_generic_expression(parse_item(parse_expression), parse_operator, |op, x, y| {
+        op.apply(x, y)
+    })
     .parse(input)
 }
 
 fn parse_expression_list(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     parse_separated_terminated(
         parse_expression,
-        peek_item,
-        eof,
+        multispace0,
+        multispace0.all_consuming(),
         || 0,
         |sum, value| sum + value,
     )
@@ -142,30 +125,17 @@ pub fn part1(input: &str) -> anyhow::Result<i64> {
 }
 
 fn parse_product_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
-    parse_generic_expression(
-        parse_sum_expression,
-        |input| char('*').terminated(multispace0).value(()).parse(input),
-        alt((peek_item, eof.value(()), char(')').value(()))),
-        |(), x, y| x * y,
-    )
-    .preceded_by(multispace0)
-    .context("product expression")
-    .parse(input)
+    parse_generic_expression(parse_sum_expression, char('*'), |_c, x, y| x * y)
+        .context("product expression")
+        .parse(input)
 }
 
 fn parse_sum_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     parse_generic_expression(
         parse_item(parse_product_expression),
-        |input| char('+').terminated(multispace0).value(()).parse(input),
-        alt((
-            peek_item,
-            eof.value(()),
-            char('*').value(()),
-            char(')').value(()),
-        )),
-        |(), x, y| x + y,
+        char('+'),
+        |_c, x, y| x + y,
     )
-    .preceded_by(multispace0)
     .context("sum expression")
     .parse(input)
 }
@@ -173,8 +143,8 @@ fn parse_sum_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
 fn parse_product_expression_list(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     parse_separated_terminated(
         parse_product_expression,
-        peek_item,
-        eof,
+        multispace0,
+        multispace0.all_consuming(),
         || 0,
         |sum, value| sum + value,
     )
