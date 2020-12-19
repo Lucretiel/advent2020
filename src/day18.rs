@@ -90,7 +90,7 @@ fn parse_generic_expression<'a, O, T>(
     }
 }
 
-/// Parse an expression with right-to-left operator precedence
+/// Parse an expression with left-to-right operator precedence
 fn parse_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     parse_generic_expression(parse_item(parse_expression), parse_operator, |op, x, y| {
         op.apply(x, y)
