@@ -2,8 +2,6 @@ use anyhow::Context;
 use nom::{
     branch::alt,
     character::complete::{char, digit1, multispace0},
-    combinator::{eof, not, peek},
-    error::ParseError,
     Err, IResult, Parser,
 };
 use nom_supreme::{
@@ -59,11 +57,6 @@ fn parse_parenthesized<'a>(
         .preceded_by(char('(').terminated(multispace0))
         .terminated(char(')').preceded_by(multispace0))
         .context("parenthesized expression")
-}
-
-/// Peek if the next input is a number or an open parenthesis
-fn peek_item(input: &str) -> IResult<&str, (), ErrorTree<&str>> {
-    peek(alt((digit1.value(()), char('(').value(())))).parse(input)
 }
 
 fn parse_generic_expression<'a, O, T>(
