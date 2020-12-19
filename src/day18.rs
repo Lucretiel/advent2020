@@ -59,6 +59,9 @@ fn parse_parenthesized<'a>(
         .context("parenthesized expression")
 }
 
+/// Parse an infix expression chain. Parses a single item, then a list of
+/// operator-item pairs, folding together the operators and items. The operator
+/// is parsed with surrounding whitespace.
 fn parse_generic_expression<'a, O, T>(
     mut item: impl Parser<&'a str, T, ErrorTree<&'a str>>,
     operator: impl Parser<&'a str, O, ErrorTree<&'a str>>,
@@ -87,6 +90,7 @@ fn parse_generic_expression<'a, O, T>(
     }
 }
 
+/// Parse an expression with right-to-left operator precedence
 fn parse_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     parse_generic_expression(parse_item(parse_expression), parse_operator, |op, x, y| {
         op.apply(x, y)
@@ -94,35 +98,34 @@ fn parse_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     .parse(input)
 }
 
-fn parse_expression_list(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
-    parse_separated_terminated(
-        parse_expression,
-        multispace0,
-        multispace0.all_consuming(),
-        || 0,
-        |sum, value| sum + value,
-    )
-    .context("expression list")
-    .parse(input)
-}
-
-fn evaluate_expression<'a>(
+fn parse_expression_list<'a>(
     expression: impl Parser<&'a str, i64, ErrorTree<&'a str>>,
-    input: &'a str,
-) -> Result<i64, ErrorTree<Location>> {
-    final_parser(expression)(input)
+) -> impl FnMut(&'a str) -> Result<i64, ErrorTree<Location>> {
+    final_parser(
+        parse_separated_terminated(
+            expression,
+            multispace0,
+            multispace0.all_consuming(),
+            || 0,
+            |sum, value| sum + value,
+        )
+        .context("expression list"),
+    )
 }
 
 pub fn part1(input: &str) -> anyhow::Result<i64> {
-    evaluate_expression(parse_expression_list, input).context("Failed to parse input")
+    parse_expression_list(parse_expression)(input).context("Failed to parse input")
 }
 
+/// Parse a product expression, where each item is a sum expression
 fn parse_product_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     parse_generic_expression(parse_sum_expression, char('*'), |_c, x, y| x * y)
         .context("product expression")
         .parse(input)
 }
 
+/// Parse a sum expression, where each item is a single number or a parenthesized
+/// product expression
 fn parse_sum_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     parse_generic_expression(
         parse_item(parse_product_expression),
@@ -133,18 +136,6 @@ fn parse_sum_expression(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
     .parse(input)
 }
 
-fn parse_product_expression_list(input: &str) -> IResult<&str, i64, ErrorTree<&str>> {
-    parse_separated_terminated(
-        parse_product_expression,
-        multispace0,
-        multispace0.all_consuming(),
-        || 0,
-        |sum, value| sum + value,
-    )
-    .context("sum expression list")
-    .parse(input)
-}
-
 pub fn part2(input: &str) -> anyhow::Result<i64> {
-    evaluate_expression(parse_product_expression_list, input).context("Failed to parse input")
+    parse_expression_list(parse_product_expression)(input).context("Failed to parse input")
 }
