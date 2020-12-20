@@ -2,6 +2,7 @@
 
 mod library;
 
+/*
 mod day1;
 mod day10;
 mod day11;
@@ -20,6 +21,9 @@ mod day6;
 mod day7;
 mod day8;
 mod day9;
+*/
+
+mod day19;
 
 use std::{
     fs,
@@ -194,6 +198,7 @@ fn main() -> anyhow::Result<()> {
     solver_picker! (
         args.day, args.part, &input;
 
+        /*
         day1 {part1 part2}
         day2 {part1 part2}
         day3 {part1 part2}
@@ -212,6 +217,8 @@ fn main() -> anyhow::Result<()> {
         day16 {part1 part2}
         day17 {part1 part2}
         day18 {part1 part2}
+        */
+       day19 {part1 part2}
     );
 
     Ok(())
