@@ -59,7 +59,7 @@ impl Rule {
 fn parse_rule(input: &str) -> IResult<&str, Rule, ErrorTree<&str>> {
     parse_separated_terminated(
         parse_range,
-        tag("or").delimited_by_both(space1),
+        tag("or").delimited_by(space1),
         peek(char('\n')),
         Vec::new,
         |vec, range| cascade! {vec; ..push(range);},

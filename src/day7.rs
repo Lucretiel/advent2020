@@ -69,7 +69,7 @@ fn parse_bag_rule(input: &str) -> IResult<&str, BagRule, ErrorTree<&str>> {
 fn parse_bag_with_rule(input: &str) -> IResult<&str, (Bag, BagRule), ErrorTree<&str>> {
     separated_pair(
         parse_bag.context("rule: target"),
-        tag("contain").delimited_by_both(space1),
+        tag("contain").delimited_by(space1),
         parse_bag_rule.context("rule: contents"),
     )
     .context("rule")

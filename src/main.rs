@@ -13,6 +13,7 @@ mod day15;
 mod day16;
 mod day17;
 mod day18;
+mod day19;
 mod day2;
 mod day3;
 mod day4;
@@ -22,8 +23,7 @@ mod day7;
 mod day8;
 mod day9;
 */
-
-mod day19;
+mod day20;
 
 use std::{
     fs,
@@ -217,8 +217,9 @@ fn main() -> anyhow::Result<()> {
         day16 {part1 part2}
         day17 {part1 part2}
         day18 {part1 part2}
+        day19 {part1 part2}
         */
-       day19 {part1 part2}
+        day20 {part1 part2}
     );
 
     Ok(())

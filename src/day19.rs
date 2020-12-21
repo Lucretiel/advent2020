@@ -1,13 +1,14 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use anyhow::Context;
 use cascade::cascade;
+use joinery::prelude::*;
+use lazy_format::{lazy_format, make_lazy_format};
 use nom::{
     branch::alt,
     bytes::complete::is_not,
     character::complete::{anychar, char, digit1, space0, space1},
     combinator::peek,
-    multi::many1,
     Err, IResult, Parser,
 };
 use nom_supreme::{
@@ -18,24 +19,8 @@ use nom_supreme::{
     parser_ext::ParserExt,
     tag::complete::tag,
 };
+use regex::{Regex, RegexBuilder};
 use thiserror::Error;
-struct BoxedParser<'a, I, O, E> {
-    parser: Box<dyn Parser<I, O, E> + 'a>,
-}
-
-impl<'a, I, O, E> Parser<I, O, E> for BoxedParser<'a, I, O, E> {
-    fn parse(&mut self, input: I) -> IResult<I, O, E> {
-        self.parser.parse(input)
-    }
-}
-
-impl<'a, I, O, E> BoxedParser<'a, I, O, E> {
-    fn new<P: Parser<I, O, E> + 'a>(parser: P) -> Self {
-        Self {
-            parser: Box::new(parser),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 enum Rule {
@@ -44,18 +29,34 @@ enum Rule {
 }
 
 impl Rule {
-    fn build_parser<'a>(&self, rules: &RuleSet, special: bool) -> BoxedParser<'a, &'a str, (), ()> {
-        match *self {
-            Rule::Char(c) => BoxedParser::new(char(c).value(())),
-            Rule::SubRules(ref choices) => choices.build_parser(rules, special),
-        }
+    fn build_pattern<'a>(&'a self, rules: &'a RuleSet, special: bool) -> impl Display + 'a {
+        lazy_format!(match (self) {
+            Rule::Char(c) => ("{}", c),
+            Rule::SubRules(choices) => ("{}", choices.build_pattern(rules, special)),
+        })
+    }
+
+    fn extract_rule_11_patterns<'a>(
+        &'a self,
+        rules: &'a RuleSet,
+        special: bool,
+    ) -> (impl Display + 'a, impl Display + 'a) {
+        let subrule = match self {
+            Rule::Char(..) => panic!("Rule 11 invalid"),
+            Rule::SubRules(choices) => &choices.choices[0].rules,
+        };
+
+        (
+            rules.build_pattern_for(&subrule[0], special),
+            rules.build_pattern_for(&subrule[1], special),
+        )
     }
 }
 
 fn parse_rule(input: &str) -> IResult<&str, Rule, ErrorTree<&str>> {
     alt((
         parse_rule_choices.map(Rule::SubRules),
-        anychar.delimited_by(char('"'), char('"')).map(Rule::Char),
+        anychar.delimited_by(char('"')).map(Rule::Char),
     ))
     .context("rule")
     .parse(input)
@@ -80,18 +81,8 @@ struct RuleChain {
 }
 
 impl RuleChain {
-    fn build_parser<'a>(&self, rules: &RuleSet, special: bool) -> BoxedParser<'a, &'a str, (), ()> {
-        let mut parsers: Vec<_> = self
-            .rules
-            .iter()
-            .map(|id| rules.build_parser_for(id, special))
-            .collect();
-
-        BoxedParser::new(move |input| {
-            parsers
-                .iter_mut()
-                .try_fold((input, ()), |(input, ()), parser| parser.parse(input))
-        })
+    fn build_pattern<'a>(&'a self, rules: &'a RuleSet, special: bool) -> impl Display + 'a {
+        lazy_format!(("{}", rules.build_pattern_for(id, special)) for id in &self.rules)
     }
 }
 
@@ -115,31 +106,21 @@ struct RuleChoices {
 }
 
 impl RuleChoices {
-    fn build_parser<'a>(&self, rules: &RuleSet, special: bool) -> BoxedParser<'a, &'a str, (), ()> {
-        let mut parsers: Vec<_> = self
+    fn build_pattern<'a>(&'a self, rules: &'a RuleSet, special: bool) -> impl Display + 'a {
+        let choices = self
             .choices
             .iter()
-            .map(|choice| choice.build_parser(rules, special))
-            .collect();
+            .map(move |choice| choice.build_pattern(rules, special))
+            .join_with("|");
 
-        BoxedParser::new(move |input| {
-            for parser in &mut parsers {
-                match parser.parse(input) {
-                    Ok((tail, ())) => return Ok((tail, ())),
-                    Err(Err::Error(())) => continue,
-                    Err(err) => return Err(err),
-                }
-            }
-
-            Err(Err::Error(()))
-        })
+        lazy_format!("(?:{})", choices)
     }
 }
 
 fn parse_rule_choices(input: &str) -> IResult<&str, RuleChoices, ErrorTree<&str>> {
     parse_separated_terminated(
         parse_rule_chain,
-        char('|').delimited_by_both(space1),
+        char('|').delimited_by(space1),
         peek(space0.terminated(char('\n'))),
         Vec::new,
         |choices, choice| cascade! {choices; ..push(choice);},
@@ -155,33 +136,41 @@ struct RuleSet {
 }
 
 impl RuleSet {
-    fn build_parser_for<'a>(&self, id: &RuleID, special: bool) -> BoxedParser<'a, &'a str, (), ()> {
-        match (special, id.id) {
-            (true, 8) => {
-                let rule = self.rules.get(id).unwrap();
-                let subrule = match rule {
-                    Rule::Char(..) => panic!("Invalid rule 8"),
-                    Rule::SubRules(choices) => &choices.choices[0].rules[0],
-                };
+    fn build_pattern_for<'a>(&'a self, id: &RuleID, special: bool) -> impl Display + 'a {
+        let rule = self.rules.get(id).unwrap();
+        let id = id.id;
 
-                let subparser = self.build_parser_for(subrule, special);
+        // Rather than do the "correct" thing and create a stack machine, we're
+        // gonna repeat the regex in on itself a few hundred times
+        lazy_format! {
+            match ((special, id)) {
+                (true, 8) => ("(?:{})+", rule.build_pattern(self, special)),
+                (true, 11) => ("{}", make_lazy_format!(fmt => {
+                    let (prefix, suffix) = rule.extract_rule_11_patterns(self, special);
+                    write!(fmt, "(?:{}", prefix)?;
 
-                BoxedParser::new(many1(subparser).value(()))
+                    for _ in 0..100 {
+                        write!(fmt, "(?:{}", prefix)?;
+                    }
+
+                    for _ in 0..100 {
+                        write!(fmt, "{})?", suffix)?;
+                    }
+
+                    write!(fmt, "{})", suffix)
+                })),
+                _ => ("{}", rule.build_pattern(self, special)),
             }
-            (true, 11) => {
-                let rule = self.rules.get(id).unwrap();
-                let subrule = match rule {
-                    Rule::Char(..) => panic!("Invalid rule 11"),
-                    Rule::SubRules(choices) => &choices.choices[0].rules,
-                };
-
-                let prefix = self.build_parser_for(&subrule[0], special);
-                let suffix = self.build_parser_for(&subrule[1], special);
-
-                BoxedParser::new(SelfNestedParser { prefix, suffix })
-            }
-            _ => self.rules.get(id).unwrap().build_parser(self, special),
         }
+    }
+
+    fn build_regex(&self, special: bool) -> Regex {
+        let pattern = format!("^{}$", self.build_pattern_for(&RuleID { id: 0 }, special));
+        eprintln!("{}", pattern);
+        RegexBuilder::new(&pattern)
+            .nest_limit(2000)
+            .build()
+            .unwrap()
     }
 }
 
@@ -261,28 +250,18 @@ fn parse_input(input: &str) -> Result<(RuleSet, Vec<&str>), ErrorTree<Location>>
 
 pub fn part1(input: &str) -> anyhow::Result<usize> {
     let (rules, lines) = parse_input(input).context("Failed to parse input")?;
-    let mut parser = rules
-        .build_parser_for(&RuleID { id: 0 }, false)
-        .all_consuming();
+    let pattern = rules.build_regex(false);
 
-    let matching = lines
-        .iter()
-        .filter(|line| parser.parse(line).is_ok())
-        .count();
+    let matching = lines.iter().filter(|line| pattern.is_match(line)).count();
 
     Ok(matching)
 }
 
 pub fn part2(input: &str) -> anyhow::Result<usize> {
     let (rules, lines) = parse_input(input).context("Failed to parse input")?;
-    let mut parser = rules
-        .build_parser_for(&RuleID { id: 0 }, true)
-        .all_consuming();
+    let pattern = rules.build_regex(true);
 
-    let matching = lines
-        .iter()
-        .filter(|line| parser.parse(line).is_ok())
-        .count();
+    let matching = lines.iter().filter(|line| pattern.is_match(line)).count();
 
     Ok(matching)
 }

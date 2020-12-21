@@ -10,6 +10,8 @@ use nom::{
 };
 use nom_supreme::parse_from_str;
 
+use crate::library::BoolExt;
+
 fn parse_number(input: &str) -> IResult<&str, usize> {
     parse_from_str(digit1).parse(input)
 }

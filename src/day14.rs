@@ -112,7 +112,9 @@ struct Write {
 
 fn parse_write(input: &str) -> IResult<&str, Write, ErrorTree<&str>> {
     separated_pair(
-        parse_from_str(digit1).delimited_by(char('['), char(']')),
+        parse_from_str(digit1)
+            .preceded_by(char('['))
+            .terminated(char(']')),
         tag(" = "),
         parse_from_str(digit1),
     )

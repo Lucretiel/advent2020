@@ -68,7 +68,7 @@ fn parse_generic_expression<'a, O, T>(
     apply: impl Fn(O, T, T) -> T,
 ) -> impl Parser<&'a str, T, ErrorTree<&'a str>> {
     let mut operator = operator
-        .delimited_by_both(multispace0)
+        .delimited_by(multispace0)
         .context("expression operator");
     move |input| {
         let (mut input, mut value) = item.parse(input)?;
