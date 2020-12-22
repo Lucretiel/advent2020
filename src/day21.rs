@@ -78,10 +78,10 @@ fn parse_recipe(input: &'static str) -> IResult<&'static str, Recipe, ErrorTree<
     )
     .context("ingredients list")
     .terminated(space0)
-    .and(parse_allergen_list.opt())
+    .and(parse_allergen_list.or(char('\n').peek().value(HashSet::new())))
     .map(|(ingredients, allergens)| Recipe {
         ingredients,
-        known_allergens: allergens.unwrap_or_default(),
+        known_allergens: allergens,
     })
     .context("recipe")
     .parse(input)
