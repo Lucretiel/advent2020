@@ -19,6 +19,7 @@ mod day21;
 mod day22;
 mod day23;
 mod day24;
+mod day25;
 mod day3;
 mod day4;
 mod day5;
@@ -225,6 +226,7 @@ fn main() -> anyhow::Result<()> {
         day22 {part1 part2}
         day23 {part1 part2}
         day24 {part1 part2}
+        day25 {part1 part2}
     );
 
     Ok(())
